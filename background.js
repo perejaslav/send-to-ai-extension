@@ -44,6 +44,13 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 
   chrome.contextMenus.create({
+    id: "sendToClaude",
+    parentId: "sendToAI",
+    title: "Claude",
+    contexts: ["selection"]
+  });
+
+  chrome.contextMenus.create({
     id: "sendToKimi",
     parentId: "sendToAI",
     title: "Kimi AI",
@@ -95,6 +102,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       break;
     case "sendToDeepSeek":
       openAndInsertText("https://chat.deepseek.com/*", "https://chat.deepseek.com/", selectedText, insertTextToDeepSeek);
+      break;
+    case "sendToClaude":
+      openAndInsertText("https://claude.ai/*", "https://claude.ai/new", selectedText, insertTextToClaude);
       break;
     case "sendToKimi":
       openAndInsertText("https://www.kimi.com/*", "https://www.kimi.com/", selectedText, insertTextToKimi);
@@ -260,7 +270,7 @@ function insertTextToZai(text) {
 function insertTextToDeepSeek(text) {
   const waitForInput = setInterval(() => {
     let inputElement = null;
-    
+
     inputElement = document.querySelector('textarea');
     if (!inputElement) {
       inputElement = document.querySelector('div[contenteditable="true"]');
@@ -314,6 +324,55 @@ function insertTextToDeepSeek(text) {
     }
   }, 200);
   
+  setTimeout(() => clearInterval(waitForInput), 15000);
+}
+
+
+// Функция для вставки текста в Claude
+function insertTextToClaude(text) {
+  const waitForInput = setInterval(() => {
+    let inputElement = null;
+
+    inputElement = document.querySelector('textarea');
+    if (!inputElement) {
+      inputElement = document.querySelector('div[contenteditable="true"]');
+    }
+    if (!inputElement) {
+      inputElement = document.querySelector('[role="textbox"]');
+    }
+    if (!inputElement) {
+      inputElement = document.querySelector('[aria-label*="Message"]') ||
+                     document.querySelector('[aria-label*="Prompt"]');
+    }
+    if (!inputElement) {
+      inputElement = document.querySelector('[data-testid*="input"]') ||
+                     document.querySelector('[data-testid*="textarea"]');
+    }
+
+    if (inputElement) {
+      clearInterval(waitForInput);
+      inputElement.focus();
+
+      if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
+        inputElement.value = text;
+
+        const inputEvent = new Event('input', { bubbles: true });
+        inputElement.dispatchEvent(inputEvent);
+
+        const changeEvent = new Event('change', { bubbles: true });
+        inputElement.dispatchEvent(changeEvent);
+      } else if (inputElement.contentEditable === 'true' || inputElement.getAttribute('role') === 'textbox') {
+        document.execCommand('selectAll', false, null);
+        document.execCommand('insertText', false, text);
+
+        const inputEvent = new Event('input', { bubbles: true });
+        inputElement.dispatchEvent(inputEvent);
+      }
+
+      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 200);
+
   setTimeout(() => clearInterval(waitForInput), 15000);
 }
 

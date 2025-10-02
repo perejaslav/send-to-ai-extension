@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Send to AI",
-  "version": "1.6",
-  "description": "Отправить выделенный текст в различные AI-ассистенты (Qwen, Grok, Z.ai, DeepSeek, Kimi, ChatGPT, Gemini, Copilot)",
+  "version": "1.7",
+  "description": "Отправить выделенный текст в различные AI-ассистенты (Qwen, Grok, Z.ai, DeepSeek, Kimi, ChatGPT, Gemini, Copilot, Claude)",
   "permissions": [
     "contextMenus",
     "tabs",
@@ -17,6 +17,8 @@
     "https://*.z.ai/*",
     "https://chat.deepseek.com/*",
     "https://*.deepseek.com/*",
+    "https://claude.ai/*",
+    "https://*.claude.ai/*",
     "https://kimi.moonshot.cn/*",
     "https://*.kimi.com/*",
     "https://www.kimi.com/*",
