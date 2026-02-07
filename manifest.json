@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Send to AI",
   "version": "1.7",
-  "description": "Отправить выделенный текст в различные AI-ассистенты (Qwen, Ernie, Minimax, Grok, Z.ai, DeepSeek, Kimi, ChatGPT, Gemini)",
+  "description": "Отправить выделенный текст в различные AI-ассистенты (Qwen, Ernie, Minimax, Grok, Z.ai, DeepSeek, Claude, Kimi, ChatGPT, Gemini)",
   "permissions": [
     "contextMenus",
     "tabs",
@@ -27,7 +27,9 @@
     "https://chatgpt.com/*",
     "https://*.chatgpt.com/*",
     "https://gemini.google.com/*",
-    "https://*.google.com/*"
+    "https://*.google.com/*",
+    "https://claude.ai/*",
+    "https://*.claude.ai/*"
   ],
   "background": {
     "service_worker": "background.js"

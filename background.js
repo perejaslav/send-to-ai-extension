@@ -31,6 +31,13 @@ chrome.runtime.onInstalled.addListener(() => {
   });
   
   chrome.contextMenus.create({
+    id: "sendToClaude",
+    parentId: "sendToAI",
+    title: "Claude",
+    contexts: ["selection"]
+  });
+  
+  chrome.contextMenus.create({
     id: "sendToDeepSeek",
     parentId: "sendToAI",
     title: "DeepSeek",
@@ -126,6 +133,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       break;
     case "sendToDeepSeek":
       openAndInsertText("https://chat.deepseek.com/*", "https://chat.deepseek.com/", selectedText, insertTextToDeepSeek);
+      break;
+    case "sendToClaude":
+      openAndInsertText("https://claude.ai/*", "https://claude.ai/new", selectedText, insertTextToClaude);
       break;
     case "sendToKimi":
       openAndInsertText("https://www.kimi.com/*", "https://www.kimi.com/", selectedText, insertTextToKimi);
@@ -310,6 +320,73 @@ function insertTextToMinimax(text) {
         
         setTimeout(() => {
           // Пробуем ClipboardEvent (для Slate.js и React)
+          const clipboardData = new DataTransfer();
+          clipboardData.setData('text/plain', text);
+          
+          const pasteEvent = new ClipboardEvent('paste', {
+            bubbles: true,
+            cancelable: true,
+            clipboardData: clipboardData
+          });
+          
+          const sel = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(inputElement);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          
+          inputElement.dispatchEvent(pasteEvent);
+          
+          // Fallback: execCommand
+          setTimeout(() => {
+            if (!inputElement.textContent || inputElement.textContent.trim() === '') {
+              document.execCommand('insertText', false, text);
+            }
+            
+            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+          }, 100);
+          
+        }, 100);
+      }, 300);
+    }
+  }, 200);
+  
+  setTimeout(() => clearInterval(waitForInput), 20000);
+}
+
+// Функция для вставки текста в Claude (React-based)
+function insertTextToClaude(text) {
+  const waitForInput = setInterval(() => {
+    let inputElement = null;
+    
+    // Claude использует div[contenteditable="true"] с role="textbox"
+    const selectors = [
+      'div[contenteditable="true"][role="textbox"]',
+      'div[contenteditable="true"]',
+      'textarea[placeholder*="How can Claude help"]',
+      'textarea',
+      '[data-slate-editor="true"]',
+      '[class*="input"]',
+      '[class*="editor"]',
+      '[aria-label*="message"]',
+      '[aria-label*="input"]'
+    ];
+    
+    for (const selector of selectors) {
+      inputElement = document.querySelector(selector);
+      if (inputElement) break;
+    }
+    
+    if (inputElement) {
+      clearInterval(waitForInput);
+      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      setTimeout(() => {
+        inputElement.focus();
+        inputElement.click();
+        
+        setTimeout(() => {
+          // Для React используем ClipboardEvent
           const clipboardData = new DataTransfer();
           clipboardData.setData('text/plain', text);
           

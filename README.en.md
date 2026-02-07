@@ -16,6 +16,7 @@ Right-click on any selected text and choose an AI assistant to send it to. The e
 | **Grok** | Send text |
 | **ChatGPT** | Send text, Translate to Russian, Summarize |
 | **Google Gemini** | Send text |
+| **Claude** | Send text |
 | **DeepSeek** | Send text |
 | **Z.ai** | Send text |
 | **Kimi AI** | Send text |
