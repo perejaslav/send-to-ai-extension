@@ -1,51 +1,117 @@
-﻿# Send to AI Extension
+# 🤖 Send to AI — Отправить в AI
 
-A Chrome/Chromium browser extension that adds a context menu to quickly send selected text to various AI assistants.
+[![Chrome](https://img.shields.io/badge/Chrome-Поддерживается-brightgreen?logo=google-chrome&logoColor=white)](https://www.google.com/chrome/)
+[![Edge](https://img.shields.io/badge/Edge-Поддерживается-brightgreen?logo=microsoft-edge&logoColor=white)](https://www.microsoft.com/edge)
+[![License](https://img.shields.io/badge/Лицензия-MIT-blue)](LICENSE)
 
-## Features
-
-Right-click on any selected text and choose an AI assistant to send it to. The extension will:
-- Open the AI chat in a new popup window (or focus existing tab)
-- Automatically insert the selected text into the input field
-
-## Supported AI Services
-
-| Service | Features |
-|---------|----------|
-| **Grok** | Send text |
-| **ChatGPT** | Send text, Translate to Russian, Summarize |
-| **Google Gemini** | Send text |
-| **DeepSeek** | Send text |
-| **Z.ai** | Send text |
-| **Kimi AI** | Send text |
-| **Qwen AI** | Send text, Translate to Russian |
-
-## Special Commands
-
-- **Send and translate to Qwen** — Translates selected text to Russian before sending
-- **Send and translate to ChatGPT** — Translates selected text to Russian before sending
-- **Summarize in ChatGPT** — Creates a concise summary of the selected text
-
-## Installation
-
-1. Download or clone this repository
-2. Open Chrome and go to `chrome://extensions/`
-3. Enable **Developer mode** (toggle in top right)
-4. Click **Load unpacked**
-5. Select the extension folder
-
-## Usage
-
-1. Select any text on a webpage
-2. Right-click to open context menu
-3. Navigate to **"Отправить в AI"** (Send to AI)
-4. Choose your preferred AI assistant
-5. A new window will open with your text ready to send
-
-## License
-
-MIT License
+Расширение для браузера, которое добавляет в контекстное меню возможность мгновенно отправить выделенный текст в популярные AI-ассистенты.
 
 ---
 
-Made with ⚒️ by [perejaslav](https://github.com/perejaslav)
+## ✨ Возможности
+
+- 🖱️ **Клик правой кнопкой** — отправь любой текст в AI за секунду
+- 🪟 **Умные окна** — открывает новое popup или переключается на уже открытую вкладку
+- 📋 **Автовставка** — текст автоматически появляется в поле ввода
+- 🌐 **8 AI-сервисов** — все популярные ассистенты в одном месте
+
+---
+
+## 🎯 Поддерживаемые AI-сервисы
+
+| Сервис | Отправка | Перевод | Саммари |
+|:------:|:--------:|:-------:|:-------:|
+| **Grok** | ✅ | — | — |
+| **ChatGPT** | ✅ | ✅ | ✅ |
+| **Google Gemini** | ✅ | — | — |
+| **DeepSeek** | ✅ | — | — |
+| **Z.ai** | ✅ | — | — |
+| **Kimi AI** | ✅ | — | — |
+| **Qwen AI** | ✅ | ✅ | — |
+
+---
+
+## 🚀 Как установить
+
+### Способ 1: Из исходников (режим разработчика)
+
+1. 📥 Скачай или клонируй этот репозиторий:
+   ```bash
+   git clone https://github.com/perejaslav/send-to-ai-extension.git
+   ```
+2. 🌐 Открой браузер и перейди на `chrome://extensions/`
+3. 🔧 Включи **Режим разработчика** (переключатель справа вверху)
+4. 📂 Нажми **Загрузить распакованное расширение**
+5. 📁 Выбери папку с расширением
+
+### Способ 2: Chrome Web Store
+
+_Sкоро появится в магазине_
+
+---
+
+## 📖 Как пользоваться
+
+1. 📝 Выдели любой текст на веб-странице
+2. 🖱️ Нажми правую кнопку мыши
+3. 🤖 Наведи на **«Отправить в AI»**
+4. ✨ Выбери нужного ассистента
+5. 💬 Готово! Текст уже в поле ввода
+
+---
+
+## ⚡ Специальные команды
+
+| Команда | Описание |
+|---------|----------|
+| 🔄 **Send and translate to Qwen** | Автоматически переводит текст на русский |
+| 🔄 **Send and translate to ChatGPT** | Автоматически переводит текст на русский |
+| 📋 **Summarize in ChatGPT** | Создаёт краткое саммари текста |
+
+---
+
+## 🔧 Технические детали
+
+- **Manifest V3** — современный API расширений Chrome
+- **Универсальная вставка** — работает с React, Next.js и другими фреймворками
+- **Polling** — ожидание загрузки поля ввода до 15 секунд
+
+### Требуемые разрешения
+
+- `contextMenus` — контекстное меню
+- `tabs` — управление вкладками
+- `scripting` — инъекция скриптов
+- `windows` — управление окнами
+- Host permissions для доменов AI-сервисов
+
+---
+
+## 📁 Структура проекта
+
+```
+send-to-ai-extension/
+├── manifest.json      # Конфигурация расширения
+├── background.js      # Основная логика
+├── icon16.png         # Иконка 16x16
+├── icon48.png         # Иконка 48x48
+├── icon128.png        # Иконка 128x128
+└── README.md          # Документация
+```
+
+---
+
+## 🤝 Вклад в проект
+
+Нашёл баг? Есть идея? Создай [Issue](https://github.com/perejaslav/send-to-ai-extension/issues) или Pull Request!
+
+---
+
+## 📄 Лицензия
+
+MIT License — используй свободно
+
+---
+
+<p align="center">
+  Made with ⚒️ by <a href="https://github.com/perejaslav">perejaslav</a>
+</p>
