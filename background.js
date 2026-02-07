@@ -59,6 +59,13 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 
   chrome.contextMenus.create({
+    id: "sendToErnie",
+    parentId: "sendToAI",
+    title: "Ernie",
+    contexts: ["selection"]
+  });
+
+  chrome.contextMenus.create({
     id: "sendAndTranslateToQwen",
     parentId: "sendToAI",
     title: "Send and translate to Qwen",
@@ -93,6 +100,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   switch (info.menuItemId) {
     case "sendToQwen":
       openAndInsertText("https://chat.qwen.ai/*", "https://chat.qwen.ai/", selectedText, insertTextToQwen);
+      break;
+    case "sendToErnie":
+      openAndInsertText("https://ernie.baidu.com/*", "https://ernie.baidu.com/chat", selectedText, insertTextToErnie);
       break;
     case "sendAndTranslateToQwen":
       const textWithTranslatePrompt = "Ты - профессиональный переводчик. Переведи на русский язык разбиением на абзацы и минимальной литературной обработкой там, где это необходимо:\n\n" + selectedText;
@@ -193,6 +203,65 @@ function insertTextToQwen(text) {
   }, 100);
   
   setTimeout(() => clearInterval(waitForInput), 10000);
+}
+
+// Функция для вставки текста в Ernie (Baidu) - для Slate.js через Clipboard
+function insertTextToErnie(text) {
+  const waitForInput = setInterval(() => {
+    let inputElement = document.querySelector('[data-slate-editor="true"]');
+    
+    if (!inputElement) {
+      inputElement = document.querySelector('div[contenteditable="true"][role="textbox"]');
+    }
+    if (!inputElement) {
+      inputElement = document.querySelector('div[contenteditable="true"]');
+    }
+    
+    if (inputElement) {
+      clearInterval(waitForInput);
+      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      setTimeout(() => {
+        inputElement.focus();
+        inputElement.click();
+        
+        setTimeout(() => {
+          // Используем ClipboardEvent для симуляции реальной вставки
+          const clipboardData = new DataTransfer();
+          clipboardData.setData('text/plain', text);
+          
+          const pasteEvent = new ClipboardEvent('paste', {
+            bubbles: true,
+            cancelable: true,
+            clipboardData: clipboardData
+          });
+          
+          // Сначала выделяем и удаляем текущее содержимое
+          const sel = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(inputElement);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          
+          // Отправляем paste событие - Slate должен его обработать
+          inputElement.dispatchEvent(pasteEvent);
+          
+          // Fallback: если paste не сработал, пробуем execCommand
+          setTimeout(() => {
+            if (!inputElement.textContent || inputElement.textContent.trim() === '') {
+              document.execCommand('insertText', false, text);
+            }
+            
+            // Триггерим input событие
+            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+          }, 100);
+          
+        }, 100);
+      }, 300);
+    }
+  }, 200);
+  
+  setTimeout(() => clearInterval(waitForInput), 20000);
 }
 
 // Функция для вставки текста в Grok (улучшенная версия)

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Send to AI",
   "version": "1.7",
-  "description": "Отправить выделенный текст в различные AI-ассистенты (Qwen, Grok, Z.ai, DeepSeek, Kimi, ChatGPT, Gemini)",
+  "description": "Отправить выделенный текст в различные AI-ассистенты (Qwen, Ernie, Grok, Z.ai, DeepSeek, Kimi, ChatGPT, Gemini)",
   "permissions": [
     "contextMenus",
     "tabs",
@@ -11,6 +11,8 @@
   "host_permissions": [
     "https://chat.qwen.ai/*",
     "https://*.qwen.ai/*",
+    "https://ernie.baidu.com/*",
+    "https://*.baidu.com/*",
     "https://grok.com/*",
     "https://*.grok.com/*",
     "https://chat.z.ai/*",

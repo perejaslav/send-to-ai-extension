@@ -1,10 +1,11 @@
-﻿# Send to AI Extension
+# Send to AI Extension
 
 A Chrome/Chromium browser extension that adds a context menu to quickly send selected text to various AI assistants.
 
 ## Features
 
 Right-click on any selected text and choose an AI assistant to send it to. The extension will:
+
 - Open the AI chat in a new popup window (or focus existing tab)
 - Automatically insert the selected text into the input field
 
@@ -19,6 +20,7 @@ Right-click on any selected text and choose an AI assistant to send it to. The e
 | **Z.ai** | Send text |
 | **Kimi AI** | Send text |
 | **Qwen AI** | Send text, Translate to Russian |
+| **Ernie** | Send text |
 
 ## Special Commands
 
