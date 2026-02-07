@@ -66,6 +66,13 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 
   chrome.contextMenus.create({
+    id: "sendToMinimax",
+    parentId: "sendToAI",
+    title: "Minimax",
+    contexts: ["selection"]
+  });
+
+  chrome.contextMenus.create({
     id: "sendAndTranslateToQwen",
     parentId: "sendToAI",
     title: "Send and translate to Qwen",
@@ -103,6 +110,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       break;
     case "sendToErnie":
       openAndInsertText("https://ernie.baidu.com/*", "https://ernie.baidu.com/chat", selectedText, insertTextToErnie);
+      break;
+    case "sendToMinimax":
+      openAndInsertText("https://agent.minimax.io/*", "https://agent.minimax.io/", selectedText, insertTextToMinimax);
       break;
     case "sendAndTranslateToQwen":
       const textWithTranslatePrompt = "Ты - профессиональный переводчик. Переведи на русский язык разбиением на абзацы и минимальной литературной обработкой там, где это необходимо:\n\n" + selectedText;
@@ -253,6 +263,76 @@ function insertTextToErnie(text) {
             }
             
             // Триггерим input событие
+            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+          }, 100);
+          
+        }, 100);
+      }, 300);
+    }
+  }, 200);
+  
+  setTimeout(() => clearInterval(waitForInput), 20000);
+}
+
+// Функция для вставки текста в Minimax
+function insertTextToMinimax(text) {
+  const waitForInput = setInterval(() => {
+    let inputElement = null;
+    
+    // Minimax - ищем различные типы полей ввода
+    const selectors = [
+      '[data-slate-editor="true"]',
+      'div[contenteditable="true"][role="textbox"]',
+      'div[contenteditable="true"]',
+      'textarea[placeholder*="输入"]',
+      'textarea[placeholder*="Type"]',
+      'textarea[placeholder*="Ask"]',
+      'textarea',
+      '[class*="input"]',
+      '[class*="editor"]',
+      '[class*="chat-input"]',
+      '[aria-label*="input"]',
+      '[aria-label*="message"]'
+    ];
+    
+    for (const selector of selectors) {
+      inputElement = document.querySelector(selector);
+      if (inputElement) break;
+    }
+    
+    if (inputElement) {
+      clearInterval(waitForInput);
+      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      setTimeout(() => {
+        inputElement.focus();
+        inputElement.click();
+        
+        setTimeout(() => {
+          // Пробуем ClipboardEvent (для Slate.js и React)
+          const clipboardData = new DataTransfer();
+          clipboardData.setData('text/plain', text);
+          
+          const pasteEvent = new ClipboardEvent('paste', {
+            bubbles: true,
+            cancelable: true,
+            clipboardData: clipboardData
+          });
+          
+          const sel = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(inputElement);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          
+          inputElement.dispatchEvent(pasteEvent);
+          
+          // Fallback: execCommand
+          setTimeout(() => {
+            if (!inputElement.textContent || inputElement.textContent.trim() === '') {
+              document.execCommand('insertText', false, text);
+            }
+            
             inputElement.dispatchEvent(new Event('input', { bubbles: true }));
           }, 100);
           

@@ -21,6 +21,7 @@ Right-click on any selected text and choose an AI assistant to send it to. The e
 | **Kimi AI** | Send text |
 | **Qwen AI** | Send text, Translate to Russian |
 | **Ernie** | Send text |
+| **Minimax** | Send text |
 
 ## Special Commands
 
