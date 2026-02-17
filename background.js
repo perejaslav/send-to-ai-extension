@@ -101,11 +101,58 @@ chrome.runtime.onInstalled.addListener(() => {
     contexts: ["selection"]
   });  
   // --- КОНЕЦ ВСТАВКИ ---
-  
+
+  // --- YouTube → Qwen: пункт меню только для ссылок ---
+  chrome.contextMenus.create({
+    id: "openYouTubeInQwen",
+    title: "Open in Qwen",
+    contexts: ["link"]
+  });
+  // --- КОНЕЦ YouTube → Qwen ---
+
 });
 
 // Обработчик клика по пункту меню
 chrome.contextMenus.onClicked.addListener((info, tab) => {
+
+  // --- YouTube → Qwen ---
+  if (info.menuItemId === "openYouTubeInQwen") {
+    const linkUrl = info.linkUrl || "";
+    // Работаем только с youtube.com и youtu.be
+    if (!linkUrl.includes("youtube.com") && !linkUrl.includes("youtu.be")) return;
+
+    // Очищаем URL: оставляем только ?v=VIDEO_ID
+    let cleanUrl = linkUrl;
+    try {
+      const url = new URL(linkUrl);
+      if (url.hostname.includes("youtube.com")) {
+        const videoId = url.searchParams.get("v");
+        if (videoId) {
+          cleanUrl = "https://www.youtube.com/watch?v=" + videoId;
+        } else {
+          // Для других YouTube-страниц (плейлисты и т.д.) — убираем лишние параметры
+          const keepParams = ["v", "list", "index"];
+          const newParams = new URLSearchParams();
+          for (const p of keepParams) {
+            if (url.searchParams.has(p)) newParams.set(p, url.searchParams.get(p));
+          }
+          url.search = newParams.toString();
+          cleanUrl = url.toString();
+        }
+      } else if (url.hostname === "youtu.be") {
+        // youtu.be/VIDEO_ID → полная ссылка
+        const videoId = url.pathname.replace("/", "");
+        cleanUrl = "https://www.youtube.com/watch?v=" + videoId;
+      }
+    } catch (e) {
+      cleanUrl = linkUrl;
+    }
+
+    openAndInsertText("https://chat.qwen.ai/*", "https://chat.qwen.ai/", cleanUrl, insertTextToQwen);
+    return;
+  }
+  // --- КОНЕЦ YouTube → Qwen ---
+
   if (!info.selectionText) return;
 
   const selectedText = info.selectionText;
