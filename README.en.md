@@ -29,7 +29,7 @@ Right-click on any selected text and choose an AI assistant to send it to. The e
 - **Send and translate to Qwen** — Translates selected text to Russian before sending
 - **Send and translate to ChatGPT** — Translates selected text to Russian before sending
 - **Summarize in ChatGPT** — Creates a concise summary of the selected text
-- **Open YT Link in Qwen** — Sends YouTube video link to Qwen (YouTube pages only, auto-cleans URL)
+- **Open YT Link in Qwen** — Sends YouTube video link to Qwen with a summary request (YouTube pages only, auto-cleans URL)
 
 ## Installation
 
@@ -55,7 +55,7 @@ Right-click on any selected text and choose an AI assistant to send it to. The e
 2. Right-click on the page **OR** select text
 3. Navigate to **"Отправить в AI"** (Send to AI)
 4. Choose **"Open YT Link in Qwen"**
-5. The video link will automatically open in Qwen (URL parameters cleaned)
+5. The video link will automatically open in Qwen with a prompt to extract a summary (URL parameters cleaned)
 
 ## Technical Details
 
