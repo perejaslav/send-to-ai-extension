@@ -9,6 +9,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - Auto-insert selected text into chat input
 - YouTube link integration for Gemini with URL normalization
 - Configurable services list (order, enable/disable, default service)
+- Unified extension icon for toolbar and context menu
 
 ## Supported AI Services
 
@@ -107,6 +108,7 @@ send-to-ai-extension/
 - Added an extension options page
 - Added configurable service order, enable/disable toggles, and default service selection
 - Added quick context menu item **"Send to <service> (default)"**
+- Updated extension icon set (`16/48/128`) and added explicit `action.default_icon` for toolbar rendering
 
 ### v2.2
 
