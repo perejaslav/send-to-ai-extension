@@ -9,6 +9,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - Auto-insert selected text into chat input
 - YouTube link integration for Gemini with URL normalization
 - Dedicated command for any link: page summary in ChatGPT
+- Dedicated command for the current page: current page summary in ChatGPT
 - Configurable services list (order, enable/disable, default service)
 - Separate show/hide toggle for special commands in the context menu
 - Unified extension icon for toolbar and context menu
@@ -38,6 +39,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - **Сделать саммари в ChatGPT** - Creates a concise summary of selected text
 - **Открыть в Gemini** - Opens a YouTube link in Gemini with a summary prompt (link context menu)
 - **Сделать саммари страницы в ChatGPT** - Sends any link to ChatGPT with a detailed page summary request
+- **Сделать саммари текущей страницы в ChatGPT** - Sends the current page URL to ChatGPT with a detailed summary request
 - **Send to <service> (default)** - Quick action for the service selected in extension settings
 
 ## Installation
@@ -71,6 +73,12 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 1. Right-click any link on a webpage
 2. Choose **"Сделать саммари страницы в ChatGPT"**
 3. ChatGPT opens with the link and a detailed prompt to summarize the page
+
+### Current Page Summary
+
+1. Right-click any empty area on the current page
+2. Choose **"Сделать саммари текущей страницы в ChatGPT"**
+3. ChatGPT opens with the current page URL and a detailed summary prompt
 
 ### Menu Configuration
 
@@ -135,6 +143,12 @@ send-to-ai-extension/
 - `npm run check` - run unit tests plus syntax checks for the extension modules
 
 ## Changelog
+
+### v2.6
+
+- Added a context menu command for the current page: **"Сделать саммари текущей страницы в ChatGPT"**
+- Added a dedicated prompt builder for current-page summaries by URL
+- Updated the documentation for the new page-context workflow
 
 ### v2.5
 

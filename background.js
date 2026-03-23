@@ -1,9 +1,10 @@
 import { insertTextIntoPage } from "./insertion.js";
-import { buildLinkSummaryPrompt } from "./link-prompts.js";
+import { buildCurrentPageSummaryPrompt, buildLinkSummaryPrompt } from "./link-prompts.js";
 import { buildMenuDescriptors } from "./menus.js";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
 import {
   LINK_SUMMARY_MENU_ID,
+  PAGE_SUMMARY_MENU_ID,
   QUICK_DEFAULT_MENU_ID,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS_BY_ID,
@@ -266,6 +267,17 @@ async function handleGenericLinkSummaryAction(linkUrl) {
   await runServiceAction(chatGptService, textToInsert);
 }
 
+async function handleCurrentPageSummaryAction(pageUrl) {
+  if (!pageUrl || !/^https?:\/\//i.test(pageUrl)) {
+    showActionStatus({ status: "unsupported_link" });
+    return;
+  }
+
+  const chatGptService = SERVICES_BY_ID.sendToChatGPT;
+  const textToInsert = buildCurrentPageSummaryPrompt(pageUrl);
+  await runServiceAction(chatGptService, textToInsert);
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   rebuildContextMenus();
   clearActionStatus();
@@ -291,7 +303,12 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 });
 
-chrome.contextMenus.onClicked.addListener(async (info) => {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === PAGE_SUMMARY_MENU_ID) {
+    await handleCurrentPageSummaryAction(info.pageUrl || tab?.url || "");
+    return;
+  }
+
   if (info.menuItemId === LINK_SUMMARY_MENU_ID) {
     await handleGenericLinkSummaryAction(info.linkUrl || "");
     return;

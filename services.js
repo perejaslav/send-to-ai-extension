@@ -1,11 +1,13 @@
 export const ROOT_MENU_ID = "sendToAI";
 export const YOUTUBE_MENU_ID = "openYouTubeInGemini";
 export const LINK_SUMMARY_MENU_ID = "summarizeLinkInChatGPT";
+export const PAGE_SUMMARY_MENU_ID = "summarizeCurrentPageInChatGPT";
 export const QUICK_DEFAULT_MENU_ID = "sendToAIDefault";
 
 export const ROOT_MENU_TITLE = "Отправить в AI";
 export const YOUTUBE_MENU_TITLE = "Открыть в Gemini";
 export const LINK_SUMMARY_MENU_TITLE = "Сделать саммари страницы в ChatGPT";
+export const PAGE_SUMMARY_MENU_TITLE = "Сделать саммари текущей страницы в ChatGPT";
 
 export const SERVICE_CONFIGS = [
   {

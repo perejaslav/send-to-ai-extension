@@ -14,6 +14,7 @@ test("buildMenuDescriptors creates quick default and flat special actions", () =
   const ids = descriptors.map((item) => item.id);
   assert.ok(ids.includes("sendToAI"));
   assert.ok(ids.includes("sendToAIDefault"));
+  assert.ok(ids.includes("summarizeCurrentPageInChatGPT"));
   assert.ok(ids.includes("summarizeLinkInChatGPT"));
   assert.ok(ids.includes("openYouTubeInGemini"));
   assert.ok(ids.includes("sendToAISeparator"));
@@ -25,6 +26,9 @@ test("buildMenuDescriptors creates quick default and flat special actions", () =
 
   const genericLinkAction = descriptors.find((item) => item.id === "summarizeLinkInChatGPT");
   assert.deepEqual(genericLinkAction.contexts, ["link"]);
+
+  const currentPageAction = descriptors.find((item) => item.id === "summarizeCurrentPageInChatGPT");
+  assert.deepEqual(currentPageAction.contexts, ["page"]);
 });
 
 test("buildMenuDescriptors omits special actions when disabled in settings", () => {
