@@ -70,7 +70,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 2. Reorder services with drag and drop
 3. Disable services you do not need
 4. Choose a default service for the quick action
-5. Optionally hide the special commands submenu
+5. Optionally hide the special commands in the main AI menu
 6. Click **Save**
 
 ### Toolbar Action
@@ -132,7 +132,7 @@ send-to-ai-extension/
 - Split `background.js` into separate modules for services, settings, menus, YouTube handling, and text insertion
 - Added toolbar badge feedback for insertion results (`OK` / `ERR`)
 - Clicking the toolbar icon now opens the settings page
-- Moved special commands into a dedicated submenu and made them configurable from settings
+- Kept special commands in the same `Отправить в AI` submenu and made them configurable from settings
 
 ### v2.3
 

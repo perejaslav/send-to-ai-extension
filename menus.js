@@ -5,8 +5,6 @@ import {
   SERVICE_CONFIGS,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS,
-  SPECIAL_ACTIONS_MENU_ID,
-  SPECIAL_ACTIONS_MENU_TITLE,
   YOUTUBE_MENU_ID,
   YOUTUBE_MENU_TITLE
 } from "./services.js";
@@ -56,16 +54,16 @@ export function buildMenuDescriptors(settings) {
 
     if (visibleSpecialActions.length > 0) {
       descriptors.push({
-        id: SPECIAL_ACTIONS_MENU_ID,
+        id: `${ROOT_MENU_ID}Separator`,
         parentId: ROOT_MENU_ID,
-        title: SPECIAL_ACTIONS_MENU_TITLE,
+        type: "separator",
         contexts: ["selection"]
       });
 
       for (const action of visibleSpecialActions) {
         descriptors.push({
           id: action.id,
-          parentId: SPECIAL_ACTIONS_MENU_ID,
+          parentId: ROOT_MENU_ID,
           title: action.title,
           contexts: ["selection"]
         });

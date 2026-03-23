@@ -1,10 +1,8 @@
 export const ROOT_MENU_ID = "sendToAI";
 export const YOUTUBE_MENU_ID = "openYouTubeInGemini";
 export const QUICK_DEFAULT_MENU_ID = "sendToAIDefault";
-export const SPECIAL_ACTIONS_MENU_ID = "sendToAISpecialActions";
 
 export const ROOT_MENU_TITLE = "Отправить в AI";
-export const SPECIAL_ACTIONS_MENU_TITLE = "Специальные команды";
 export const YOUTUBE_MENU_TITLE = "Открыть в Gemini";
 
 export const SERVICE_CONFIGS = [
