@@ -53,6 +53,25 @@ const SERVICE_CONFIGS = [
     }
   },
   {
+    id: "sendToAistudio",
+    title: "Google AI Studio",
+    urlPattern: "https://aistudio.google.com/*",
+    newUrl: "https://aistudio.google.com/app/prompts/new_chat",
+    profile: {
+      selectors: [
+        'textarea[aria-label*="Enter a prompt"]',
+        'textarea[placeholder*="Start typing a prompt"]',
+        'div[contenteditable="true"][role="textbox"]',
+        'div[contenteditable="true"]',
+        'textarea',
+        'input[type="text"]'
+      ],
+      timeoutMs: 20000,
+      intervalMs: 200,
+      usePasteFirst: false
+    }
+  },
+  {
     id: "sendToClaude",
     title: "Claude",
     urlPattern: "https://claude.ai/*",

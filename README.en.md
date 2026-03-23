@@ -16,6 +16,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 | **Grok** | Send text |
 | **ChatGPT** | Send text, Translate to Russian, Summarize |
 | **Google Gemini** | Send text |
+| **Google AI Studio** | Send text |
 | **Claude** | Send text |
 | **DeepSeek** | Send text |
 | **Z.ai** | Send text |
@@ -87,6 +88,12 @@ send-to-ai-extension/
 ```
 
 ## Changelog
+
+### v2.2
+
+- Added **Google AI Studio** (`https://aistudio.google.com/app/prompts/new_chat`) to the context menu
+- Tuned selected text insertion for the **Google AI Studio** prompt field
+- Bumped extension version to `2.2`
 
 ### v2.1
 

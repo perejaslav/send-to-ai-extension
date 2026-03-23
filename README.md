@@ -16,6 +16,7 @@
 | **Grok** | Отправка текста |
 | **ChatGPT** | Отправка, перевод на русский, саммари |
 | **Google Gemini** | Отправка текста |
+| **Google AI Studio** | Отправка текста |
 | **Claude** | Отправка текста |
 | **DeepSeek** | Отправка текста |
 | **Z.ai** | Отправка текста |
@@ -85,6 +86,14 @@ send-to-ai-extension/
 |- README.md
 |- README.en.md
 ```
+
+## Changelog
+
+### v2.2
+
+- Добавлен **Google AI Studio** (`https://aistudio.google.com/app/prompts/new_chat`) в контекстное меню
+- Настроена вставка текста в поле промпта **Google AI Studio**
+- Обновлена версия расширения до `2.2`
 
 ## Лицензия
 
