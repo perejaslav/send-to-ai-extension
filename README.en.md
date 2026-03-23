@@ -8,6 +8,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - Reuse an already opened AI tab (focus + insert), or open a new popup window
 - Auto-insert selected text into chat input
 - YouTube link integration for Gemini with URL normalization
+- Dedicated command for any link: page summary in ChatGPT
 - Configurable services list (order, enable/disable, default service)
 - Separate show/hide toggle for special commands in the context menu
 - Unified extension icon for toolbar and context menu
@@ -36,6 +37,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - **Отправить и перевести в ChatGPT** - Translates selected text to Russian before sending
 - **Сделать саммари в ChatGPT** - Creates a concise summary of selected text
 - **Открыть в Gemini** - Opens a YouTube link in Gemini with a summary prompt (link context menu)
+- **Сделать саммари страницы в ChatGPT** - Sends any link to ChatGPT with a detailed page summary request
 - **Send to <service> (default)** - Quick action for the service selected in extension settings
 
 ## Installation
@@ -63,6 +65,12 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 1. On any webpage, right-click a YouTube link (`youtube.com` or `youtu.be`)
 2. Choose **"Открыть в Gemini"** (separate link-context menu item)
 3. Gemini opens with a normalized YouTube URL and summary prompt
+
+### Any Link Summary
+
+1. Right-click any link on a webpage
+2. Choose **"Сделать саммари страницы в ChatGPT"**
+3. ChatGPT opens with the link and a detailed prompt to summarize the page
 
 ### Menu Configuration
 
@@ -104,11 +112,13 @@ send-to-ai-extension/
 |- menus.js
 |- youtube.js
 |- insertion.js
+|- link-prompts.js
 |- options.html
 |- options.css
 |- options.js
 |- package.json
 |- test/
+|  |- link-prompts.test.js
 |  |- menus.test.js
 |  |- settings.test.js
 |  |- youtube.test.js
@@ -125,6 +135,12 @@ send-to-ai-extension/
 - `npm run check` - run unit tests plus syntax checks for the extension modules
 
 ## Changelog
+
+### v2.5
+
+- Added a context menu command for any link: **"Сделать саммари страницы в ChatGPT"**
+- Added a dedicated prompt builder for detailed page summaries by URL
+- Updated the documentation for the new link-summary workflow
 
 ### v2.4
 

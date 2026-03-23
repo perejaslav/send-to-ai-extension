@@ -1,4 +1,6 @@
 import {
+  LINK_SUMMARY_MENU_ID,
+  LINK_SUMMARY_MENU_TITLE,
   QUICK_DEFAULT_MENU_ID,
   ROOT_MENU_ID,
   ROOT_MENU_TITLE,
@@ -70,6 +72,12 @@ export function buildMenuDescriptors(settings) {
       }
     }
   }
+
+  descriptors.push({
+    id: LINK_SUMMARY_MENU_ID,
+    title: LINK_SUMMARY_MENU_TITLE,
+    contexts: ["link"]
+  });
 
   descriptors.push({
     id: YOUTUBE_MENU_ID,

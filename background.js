@@ -1,7 +1,9 @@
 import { insertTextIntoPage } from "./insertion.js";
+import { buildLinkSummaryPrompt } from "./link-prompts.js";
 import { buildMenuDescriptors } from "./menus.js";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
 import {
+  LINK_SUMMARY_MENU_ID,
   QUICK_DEFAULT_MENU_ID,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS_BY_ID,
@@ -253,6 +255,17 @@ async function handleYouTubeLinkAction(linkUrl) {
   await runServiceAction(geminiService, textToInsert);
 }
 
+async function handleGenericLinkSummaryAction(linkUrl) {
+  if (!linkUrl) {
+    showActionStatus({ status: "unsupported_link" });
+    return;
+  }
+
+  const chatGptService = SERVICES_BY_ID.sendToChatGPT;
+  const textToInsert = buildLinkSummaryPrompt(linkUrl);
+  await runServiceAction(chatGptService, textToInsert);
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   rebuildContextMenus();
   clearActionStatus();
@@ -279,6 +292,11 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 chrome.contextMenus.onClicked.addListener(async (info) => {
+  if (info.menuItemId === LINK_SUMMARY_MENU_ID) {
+    await handleGenericLinkSummaryAction(info.linkUrl || "");
+    return;
+  }
+
   if (info.menuItemId === YOUTUBE_MENU_ID) {
     await handleYouTubeLinkAction(info.linkUrl || "");
     return;
