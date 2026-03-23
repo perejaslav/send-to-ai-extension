@@ -57,6 +57,21 @@ h2 {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #fbfcff;
+  cursor: grab;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.service-row.is-dragging {
+  opacity: 0.65;
+  cursor: grabbing;
+}
+
+.service-row.drop-before {
+  border-top: 2px solid #1d4ed8;
+}
+
+.service-row.drop-after {
+  border-bottom: 2px solid #1d4ed8;
 }
 
 .service-toggle {
@@ -69,6 +84,21 @@ h2 {
 .service-controls {
   display: flex;
   gap: 6px;
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #cdd5df;
+  background: #ffffff;
+  color: #4b5563;
+  font-weight: 700;
+  letter-spacing: 1px;
+  user-select: none;
 }
 
 button {
@@ -105,6 +135,11 @@ button:disabled {
   margin-bottom: 8px;
 }
 
+.service-toggle input {
+  width: 16px;
+  height: 16px;
+}
+
 select {
   width: 100%;
   max-width: 360px;
@@ -118,6 +153,7 @@ select {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .status {

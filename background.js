@@ -1,371 +1,270 @@
-const ROOT_MENU_ID = "sendToAI";
-const YOUTUBE_MENU_ID = "openYouTubeInGemini";
-const QUICK_DEFAULT_MENU_ID = "sendToAIDefault";
-const SETTINGS_STORAGE_KEYS = ["serviceOrder", "enabledServices", "defaultServiceId"];
+import { insertTextIntoPage } from "./insertion.js";
+import { buildMenuDescriptors } from "./menus.js";
+import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
+import {
+  QUICK_DEFAULT_MENU_ID,
+  SERVICES_BY_ID,
+  SPECIAL_ACTIONS_BY_ID,
+  YOUTUBE_MENU_ID
+} from "./services.js";
+import { buildYouTubePrompt, normalizeYouTubeUrl } from "./youtube.js";
 
-const SERVICE_CONFIGS = [
-  {
-    id: "sendToGrok",
-    title: "Grok",
-    urlPattern: "https://grok.com/*",
-    newUrl: "https://grok.com/",
-    profile: {
-      selectors: [
-        'textarea[placeholder*="Ask"]',
-        'textarea[placeholder*="Type"]',
-        'div[contenteditable="true"][role="textbox"]',
-        'div[contenteditable="true"]',
-        '[aria-label*="message"]',
-        '[aria-label*="input"]',
-        '[aria-label*="prompt"]',
-        'textarea',
-        'input[type="text"]'
-      ],
-      timeoutMs: 20000,
-      intervalMs: 200,
-      usePasteFirst: false
-    }
-  },
-  {
-    id: "sendToChatGPT",
-    title: "ChatGPT",
-    urlPattern: "https://chatgpt.com/*",
-    newUrl: "https://chatgpt.com/",
-    profile: {
-      selectors: [
-        '#prompt-textarea',
-        'div[contenteditable="true"][role="textbox"]',
-        'div[contenteditable="true"]',
-        'textarea'
-      ]
-    }
-  },
-  {
-    id: "sendToGemini",
-    title: "Google Gemini",
-    urlPattern: "https://gemini.google.com/*",
-    newUrl: "https://gemini.google.com/app",
-    profile: {
-      selectors: [
-        'div[aria-label*="Enter a prompt"]',
-        'div[aria-label*="prompt"]',
-        'div[contenteditable="true"]',
-        'textarea'
-      ]
-    }
-  },
-  {
-    id: "sendToAistudio",
-    title: "Google AI Studio",
-    urlPattern: "https://aistudio.google.com/*",
-    newUrl: "https://aistudio.google.com/app/prompts/new_chat",
-    profile: {
-      selectors: [
-        'textarea[aria-label*="Enter a prompt"]',
-        'textarea[placeholder*="Start typing a prompt"]',
-        'div[contenteditable="true"][role="textbox"]',
-        'div[contenteditable="true"]',
-        'textarea',
-        'input[type="text"]'
-      ],
-      timeoutMs: 20000,
-      intervalMs: 200,
-      usePasteFirst: false
-    }
-  },
-  {
-    id: "sendToClaude",
-    title: "Claude",
-    urlPattern: "https://claude.ai/*",
-    newUrl: "https://claude.ai/new",
-    profile: {
-      selectors: [
-        'div[contenteditable="true"][role="textbox"]',
-        'div[contenteditable="true"]',
-        'textarea[placeholder*="How can Claude help"]',
-        'textarea'
-      ],
-      usePasteFirst: true,
-      timeoutMs: 20000
-    }
-  },
-  {
-    id: "sendToDeepSeek",
-    title: "DeepSeek",
-    urlPattern: "https://chat.deepseek.com/*",
-    newUrl: "https://chat.deepseek.com/",
-    profile: {
-      selectors: [
-        'textarea[placeholder*="Ask"]',
-        'textarea[placeholder*="Type"]',
-        'textarea',
-        'div[contenteditable="true"]',
-        '[aria-label*="prompt"]',
-        '[aria-label*="message"]'
-      ]
-    }
-  },
-  {
-    id: "sendToZai",
-    title: "Z.ai",
-    urlPattern: "https://chat.z.ai/*",
-    newUrl: "https://chat.z.ai/",
-    profile: {
-      selectors: ['#chat-input', 'textarea', 'div[contenteditable="true"]'],
-      intervalMs: 100,
-      timeoutMs: 10000
-    }
-  },
-  {
-    id: "sendToKimi",
-    title: "Kimi AI",
-    urlPattern: "https://www.kimi.com/*",
-    newUrl: "https://www.kimi.com/",
-    profile: {
-      selectors: [
-        '.chat-input-editor',
-        'div[contenteditable="true"]',
-        'textarea',
-        'input[type="text"]'
-      ]
-    }
-  },
-  {
-    id: "sendToQwen",
-    title: "Qwen AI",
-    urlPattern: "https://chat.qwen.ai/*",
-    newUrl: "https://chat.qwen.ai/",
-    profile: {
-      selectors: ['textarea', 'div[contenteditable="true"]'],
-      intervalMs: 100,
-      timeoutMs: 10000
-    }
-  },
-  {
-    id: "sendToErnie",
-    title: "Ernie",
-    urlPattern: "https://ernie.baidu.com/*",
-    newUrl: "https://ernie.baidu.com/chat",
-    profile: {
-      selectors: [
-        '[data-slate-editor="true"]',
-        'div[contenteditable="true"][role="textbox"]',
-        'div[contenteditable="true"]'
-      ],
-      usePasteFirst: true,
-      timeoutMs: 20000
-    }
-  },
-  {
-    id: "sendToMinimax",
-    title: "Minimax",
-    urlPattern: "https://agent.minimax.io/*",
-    newUrl: "https://agent.minimax.io/",
-    profile: {
-      selectors: [
-        '[data-slate-editor="true"]',
-        'div[contenteditable="true"][role="textbox"]',
-        'div[contenteditable="true"]',
-        'textarea[placeholder*="Type"]',
-        'textarea[placeholder*="Ask"]',
-        '[class*="chat-input"]',
-        'textarea'
-      ],
-      usePasteFirst: true,
-      timeoutMs: 20000
-    }
-  },
-  {
-    id: "sendToStepFun",
-    title: "StepFun",
-    urlPattern: "https://stepfun.ai/*",
-    newUrl: "https://stepfun.ai/chats/new",
-    profile: {
-      selectors: [
-        '[data-slate-editor="true"]',
-        'div[contenteditable="true"][role="textbox"]',
-        'div[contenteditable="plaintext-only"]',
-        'div[contenteditable="true"]',
-        '[aria-label*="prompt"]',
-        '[aria-label*="message"]',
-        'textarea'
-      ],
-      usePasteFirst: true
-    }
-  }
-];
+const ACTION_DEFAULT_TITLE = "Send to AI - открыть настройки";
+const STATUS_CLEAR_DELAY_MS = 5000;
 
-const SPECIAL_ACTIONS = [
-  {
-    id: "sendAndTranslateToQwen",
-    title: "Send and translate to Qwen",
-    serviceId: "sendToQwen",
-    transformText: (selectedText) =>
-      "Ты - профессиональный переводчик. Переведи на русский язык разбиением на абзацы и минимальной литературной обработкой там, где это необходимо:\n\n" + selectedText
-  },
-  {
-    id: "sendAndTranslateToChatGPT",
-    title: "Send and translate to ChatGPT",
-    serviceId: "sendToChatGPT",
-    transformText: (selectedText) =>
-      "Ты - профессиональный переводчик. Переведи на русский язык разбиением на абзацы и минимальной литературной обработкой там, где это необходимо:\n\n" + selectedText
-  },
-  {
-    id: "summarizeInChatGPT",
-    title: "Summarize in ChatGPT",
-    serviceId: "sendToChatGPT",
-    transformText: (selectedText) =>
-      "Без вступительного текста. Сделай краткое саммари --- \n\n" + selectedText
-  }
-];
-
-const SERVICES_BY_ID = Object.fromEntries(SERVICE_CONFIGS.map((service) => [service.id, service]));
-const SPECIAL_ACTIONS_BY_ID = Object.fromEntries(SPECIAL_ACTIONS.map((action) => [action.id, action]));
-const ALL_SERVICE_IDS = SERVICE_CONFIGS.map((service) => service.id);
-
-function buildDefaultSettings() {
-  const enabledServices = Object.fromEntries(ALL_SERVICE_IDS.map((serviceId) => [serviceId, true]));
-
-  return {
-    serviceOrder: [...ALL_SERVICE_IDS],
-    enabledServices,
-    defaultServiceId: ALL_SERVICE_IDS[0] || null
-  };
-}
-
-const DEFAULT_SETTINGS = buildDefaultSettings();
-
-function normalizeSettings(rawSettings) {
-  const source = rawSettings && typeof rawSettings === "object" ? rawSettings : {};
-
-  const orderFromStorage = Array.isArray(source.serviceOrder) ? source.serviceOrder : [];
-  const normalizedOrder = [];
-  const seen = new Set();
-
-  for (const serviceId of orderFromStorage) {
-    if (!ALL_SERVICE_IDS.includes(serviceId) || seen.has(serviceId)) {
-      continue;
-    }
-
-    seen.add(serviceId);
-    normalizedOrder.push(serviceId);
-  }
-
-  for (const serviceId of ALL_SERVICE_IDS) {
-    if (seen.has(serviceId)) {
-      continue;
-    }
-
-    seen.add(serviceId);
-    normalizedOrder.push(serviceId);
-  }
-
-  const enabledFromStorage = source.enabledServices && typeof source.enabledServices === "object"
-    ? source.enabledServices
-    : {};
-
-  const normalizedEnabled = {};
-  for (const serviceId of ALL_SERVICE_IDS) {
-    normalizedEnabled[serviceId] = typeof enabledFromStorage[serviceId] === "boolean"
-      ? enabledFromStorage[serviceId]
-      : true;
-  }
-
-  const enabledServiceIds = normalizedOrder.filter((serviceId) => normalizedEnabled[serviceId]);
-  const hasValidDefault = typeof source.defaultServiceId === "string" && enabledServiceIds.includes(source.defaultServiceId);
-  const fallbackDefaultId = enabledServiceIds[0] || normalizedOrder[0] || null;
-
-  return {
-    serviceOrder: normalizedOrder,
-    enabledServices: normalizedEnabled,
-    defaultServiceId: hasValidDefault ? source.defaultServiceId : fallbackDefaultId
-  };
-}
-
-function loadSettings(callback) {
-  chrome.storage.sync.get(SETTINGS_STORAGE_KEYS, (storedSettings) => {
-    if (chrome.runtime.lastError) {
-      console.warn("storage.sync.get error:", chrome.runtime.lastError.message);
-      callback(DEFAULT_SETTINGS);
-      return;
-    }
-
-    callback(normalizeSettings(storedSettings));
-  });
-}
-
-function isServiceEnabled(settings, serviceId) {
-  return settings.enabledServices[serviceId] !== false;
-}
-
-function rebuildContextMenus() {
-  loadSettings((settings) => {
-    chrome.contextMenus.removeAll(() => {
+function storageGet(keys) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.sync.get(keys, (result) => {
       if (chrome.runtime.lastError) {
-        console.warn("contextMenus.removeAll error:", chrome.runtime.lastError.message);
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
       }
 
-      safeCreateContextMenu({
-        id: ROOT_MENU_ID,
-        title: "Отправить в AI",
-        contexts: ["selection"]
-      });
-
-      const defaultService = settings.defaultServiceId ? SERVICES_BY_ID[settings.defaultServiceId] : null;
-      if (defaultService && isServiceEnabled(settings, defaultService.id)) {
-        safeCreateContextMenu({
-          id: QUICK_DEFAULT_MENU_ID,
-          title: `Отправить в ${defaultService.title} (по умолчанию)`,
-          contexts: ["selection"]
-        });
-      }
-
-      for (const serviceId of settings.serviceOrder) {
-        if (!isServiceEnabled(settings, serviceId)) {
-          continue;
-        }
-
-        const service = SERVICES_BY_ID[serviceId];
-        if (!service) {
-          continue;
-        }
-
-        safeCreateContextMenu({
-          id: service.id,
-          parentId: ROOT_MENU_ID,
-          title: service.title,
-          contexts: ["selection"]
-        });
-      }
-
-      for (const action of SPECIAL_ACTIONS) {
-        if (!isServiceEnabled(settings, action.serviceId)) {
-          continue;
-        }
-
-        safeCreateContextMenu({
-          id: action.id,
-          parentId: ROOT_MENU_ID,
-          title: action.title,
-          contexts: ["selection"]
-        });
-      }
-
-      safeCreateContextMenu({
-        id: YOUTUBE_MENU_ID,
-        title: "Open in Gemini",
-        contexts: ["link"]
-      });
+      resolve(result);
     });
   });
 }
 
+function queryTabs(queryInfo) {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query(queryInfo, (tabs) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve(tabs || []);
+    });
+  });
+}
+
+function updateWindow(windowId, updateInfo) {
+  return new Promise((resolve, reject) => {
+    chrome.windows.update(windowId, updateInfo, (window) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve(window);
+    });
+  });
+}
+
+function updateTab(tabId, updateProperties) {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.update(tabId, updateProperties, (tab) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve(tab);
+    });
+  });
+}
+
+function createWindow(createData) {
+  return new Promise((resolve, reject) => {
+    chrome.windows.create(createData, (window) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve(window);
+    });
+  });
+}
+
+function removeAllMenus() {
+  return new Promise((resolve, reject) => {
+    chrome.contextMenus.removeAll(() => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+function executeScript(tabId, text, profile) {
+  return new Promise((resolve, reject) => {
+    chrome.scripting.executeScript(
+      {
+        target: { tabId },
+        func: insertTextIntoPage,
+        args: [text, profile || {}]
+      },
+      (results) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+
+        resolve(results?.[0]?.result || { status: "unknown" });
+      }
+    );
+  });
+}
+
+async function loadSettings() {
+  try {
+    const storedSettings = await storageGet(SETTINGS_STORAGE_KEYS);
+    return normalizeSettings(storedSettings);
+  } catch (error) {
+    console.warn("storage.sync.get error:", error.message);
+    return DEFAULT_SETTINGS;
+  }
+}
+
+function safeCreateContextMenu(options) {
+  chrome.contextMenus.create(options, () => {
+    if (chrome.runtime.lastError) {
+      console.warn(`contextMenus.create error for ${options.id}:`, chrome.runtime.lastError.message);
+    }
+  });
+}
+
+async function rebuildContextMenus() {
+  const settings = await loadSettings();
+
+  try {
+    await removeAllMenus();
+  } catch (error) {
+    console.warn("contextMenus.removeAll error:", error.message);
+  }
+
+  for (const descriptor of buildMenuDescriptors(settings)) {
+    safeCreateContextMenu(descriptor);
+  }
+}
+
+function pickMostRecentTab(tabs) {
+  return [...tabs].sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
+}
+
+function clearActionStatus() {
+  chrome.action.setBadgeText({ text: "" });
+  chrome.action.setTitle({ title: ACTION_DEFAULT_TITLE });
+}
+
+function showActionStatus(result) {
+  const isSuccess = result.status === "success";
+  const badgeText = isSuccess ? "OK" : "ERR";
+  const badgeColor = isSuccess ? "#166534" : "#b91c1c";
+  const title = isSuccess
+    ? "Текст успешно вставлен"
+    : result.status === "unsupported_link"
+      ? "Команда доступна только для ссылок YouTube"
+      : result.status === "input_not_found"
+      ? "Страница открылась, но поле ввода не найдено"
+      : "Не удалось вставить текст в поле ввода";
+
+  chrome.action.setBadgeBackgroundColor({ color: badgeColor });
+  chrome.action.setBadgeText({ text: badgeText });
+  chrome.action.setTitle({ title });
+
+  setTimeout(clearActionStatus, STATUS_CLEAR_DELAY_MS);
+}
+
+async function focusTabAndInsert(tab, text, profile) {
+  if (!tab?.id || !tab.windowId) {
+    return { status: "tab_unavailable" };
+  }
+
+  await updateWindow(tab.windowId, { focused: true });
+  await updateTab(tab.id, { active: true });
+  return executeScript(tab.id, text, profile);
+}
+
+function waitForTabComplete(tabId, timeoutMs = 15000) {
+  return new Promise((resolve) => {
+    let finished = false;
+
+    const finish = () => {
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+      chrome.tabs.onUpdated.removeListener(listener);
+      resolve();
+    };
+
+    const listener = (updatedTabId, changeInfo) => {
+      if (updatedTabId !== tabId || changeInfo.status !== "complete") {
+        return;
+      }
+
+      finish();
+    };
+
+    chrome.tabs.onUpdated.addListener(listener);
+    setTimeout(finish, timeoutMs);
+  });
+}
+
+async function openAndInsertText(service, text) {
+  const tabs = await queryTabs({ url: service.urlPattern });
+
+  if (tabs.length > 0) {
+    const targetTab = pickMostRecentTab(tabs);
+    return focusTabAndInsert(targetTab, text, service.profile);
+  }
+
+  const newWindow = await createWindow({
+    url: service.newUrl,
+    type: "popup",
+    width: 1200,
+    height: 800
+  });
+
+  const newTab = newWindow?.tabs?.[0];
+  if (!newTab?.id) {
+    return { status: "tab_unavailable" };
+  }
+
+  await waitForTabComplete(newTab.id);
+  return executeScript(newTab.id, text, service.profile);
+}
+
+async function runServiceAction(service, text) {
+  try {
+    const result = await openAndInsertText(service, text);
+    showActionStatus(result);
+  } catch (error) {
+    console.warn("Service action failed:", error.message);
+    showActionStatus({ status: "error" });
+  }
+}
+
+async function handleYouTubeLinkAction(linkUrl) {
+  const cleanUrl = normalizeYouTubeUrl(linkUrl);
+  if (!cleanUrl) {
+    showActionStatus({ status: "unsupported_link" });
+    return;
+  }
+
+  const geminiService = SERVICES_BY_ID.sendToGemini;
+  const textToInsert = buildYouTubePrompt(cleanUrl);
+  await runServiceAction(geminiService, textToInsert);
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   rebuildContextMenus();
+  clearActionStatus();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   rebuildContextMenus();
+  clearActionStatus();
+});
+
+chrome.action.onClicked.addListener(() => {
+  chrome.runtime.openOptionsPage();
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -379,20 +278,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!message || message.type !== "getServiceConfigs") {
-    return;
-  }
-
-  sendResponse({
-    services: SERVICE_CONFIGS.map(({ id, title }) => ({ id, title })),
-    defaultSettings: DEFAULT_SETTINGS
-  });
-});
-
-chrome.contextMenus.onClicked.addListener((info) => {
+chrome.contextMenus.onClicked.addListener(async (info) => {
   if (info.menuItemId === YOUTUBE_MENU_ID) {
-    handleYouTubeLinkAction(info.linkUrl || "");
+    await handleYouTubeLinkAction(info.linkUrl || "");
     return;
   }
 
@@ -400,33 +288,29 @@ chrome.contextMenus.onClicked.addListener((info) => {
     return;
   }
 
+  const settings = await loadSettings();
+
   if (info.menuItemId === QUICK_DEFAULT_MENU_ID) {
-    loadSettings((settings) => {
-      if (!settings.defaultServiceId) {
-        return;
-      }
+    if (!settings.defaultServiceId) {
+      return;
+    }
 
-      const defaultService = SERVICES_BY_ID[settings.defaultServiceId];
-      if (!defaultService || !isServiceEnabled(settings, defaultService.id)) {
-        return;
-      }
+    const defaultService = SERVICES_BY_ID[settings.defaultServiceId];
+    if (!defaultService || settings.enabledServices[defaultService.id] === false) {
+      return;
+    }
 
-      openAndInsertText(defaultService, info.selectionText);
-    });
+    await runServiceAction(defaultService, info.selectionText);
     return;
   }
 
-  const selectedText = info.selectionText;
-
   const directService = SERVICES_BY_ID[info.menuItemId];
   if (directService) {
-    loadSettings((settings) => {
-      if (!isServiceEnabled(settings, directService.id)) {
-        return;
-      }
+    if (settings.enabledServices[directService.id] === false) {
+      return;
+    }
 
-      openAndInsertText(directService, selectedText);
-    });
+    await runServiceAction(directService, info.selectionText);
     return;
   }
 
@@ -436,419 +320,9 @@ chrome.contextMenus.onClicked.addListener((info) => {
   }
 
   const targetService = SERVICES_BY_ID[specialAction.serviceId];
-  if (!targetService) {
+  if (!targetService || settings.enabledServices[targetService.id] === false) {
     return;
   }
 
-  loadSettings((settings) => {
-    if (!isServiceEnabled(settings, targetService.id)) {
-      return;
-    }
-
-    openAndInsertText(targetService, specialAction.transformText(selectedText));
-  });
+  await runServiceAction(targetService, specialAction.transformText(info.selectionText));
 });
-
-function safeCreateContextMenu(options) {
-  chrome.contextMenus.create(options, () => {
-    if (chrome.runtime.lastError) {
-      console.warn(`contextMenus.create error for ${options.id}:`, chrome.runtime.lastError.message);
-    }
-  });
-}
-
-function handleYouTubeLinkAction(linkUrl) {
-  const cleanUrl = normalizeYouTubeUrl(linkUrl);
-  if (!cleanUrl) {
-    return;
-  }
-
-  const geminiService = SERVICES_BY_ID.sendToGemini;
-  const textToInsert = buildYouTubePrompt(cleanUrl);
-  openAndInsertText(geminiService, textToInsert);
-}
-
-function normalizeYouTubeUrl(linkUrl) {
-  let url;
-
-  try {
-    url = new URL(linkUrl);
-  } catch {
-    return null;
-  }
-
-  const host = url.hostname.toLowerCase();
-
-  if (host === "youtu.be") {
-    const videoId = url.pathname.split("/").filter(Boolean)[0];
-    if (!videoId) {
-      return null;
-    }
-    return `https://www.youtube.com/watch?v=${videoId}`;
-  }
-
-  const allowedYouTubeHosts = new Set(["youtube.com", "www.youtube.com", "m.youtube.com"]);
-  if (!allowedYouTubeHosts.has(host)) {
-    return null;
-  }
-
-  if (url.pathname === "/watch") {
-    const videoId = url.searchParams.get("v");
-    if (videoId) {
-      return `https://www.youtube.com/watch?v=${videoId}`;
-    }
-  }
-
-  const keepParams = ["v", "list", "index"];
-  const filteredParams = new URLSearchParams();
-  for (const param of keepParams) {
-    const value = url.searchParams.get(param);
-    if (value) {
-      filteredParams.set(param, value);
-    }
-  }
-
-  const normalizedBase = `https://www.youtube.com${url.pathname}`;
-  const normalizedQuery = filteredParams.toString();
-  return normalizedQuery ? `${normalizedBase}?${normalizedQuery}` : normalizedBase;
-}
-
-function buildYouTubePrompt(cleanUrl) {
-  return (
-    cleanUrl +
-    "\n\nТвоя задача — обработать предоставленный ролик: извлечь всю важную информацию и удалить \"воду\"." +
-    "\n\nЧто считается важной информацией:" +
-    "\n- Факты, цифры и конкретные данные" +
-    "\n- Ключевые идеи и выводы автора" +
-    "\n- Действия, задачи и решения" +
-    "\n\nСохрани ВСЕ содержательные детали БЕЗ ИСКЛЮЧЕНИЯ. Не сокращай намеренно, если это грозит потерей смысла. " +
-    "Результат должен быть точным и полностью сохранять смысл оригинала."
-  );
-}
-
-function openAndInsertText(service, text) {
-  chrome.tabs.query({ url: service.urlPattern }, (tabs) => {
-    if (chrome.runtime.lastError) {
-      console.warn("tabs.query error:", chrome.runtime.lastError.message);
-      return;
-    }
-
-    if (tabs && tabs.length > 0) {
-      const targetTab = pickMostRecentTab(tabs);
-      focusTabAndInsert(targetTab, text, service.profile);
-      return;
-    }
-
-    chrome.windows.create(
-      {
-        url: service.newUrl,
-        type: "popup",
-        width: 1200,
-        height: 800,
-        left: 100,
-        top: 100
-      },
-      (newWindow) => {
-        if (chrome.runtime.lastError) {
-          console.warn("windows.create error:", chrome.runtime.lastError.message);
-          return;
-        }
-
-        const newTab = newWindow?.tabs?.[0];
-        if (!newTab?.id) {
-          return;
-        }
-
-        waitForTabAndInsert(newTab.id, text, service.profile);
-      }
-    );
-  });
-}
-
-function pickMostRecentTab(tabs) {
-  return [...tabs].sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
-}
-
-function focusTabAndInsert(tab, text, profile) {
-  if (!tab?.id || !tab.windowId) {
-    return;
-  }
-
-  chrome.windows.update(tab.windowId, { focused: true }, () => {
-    if (chrome.runtime.lastError) {
-      console.warn("windows.update error:", chrome.runtime.lastError.message);
-      return;
-    }
-
-    chrome.tabs.update(tab.id, { active: true }, () => {
-      if (chrome.runtime.lastError) {
-        console.warn("tabs.update error:", chrome.runtime.lastError.message);
-        return;
-      }
-
-      executeInsert(tab.id, text, profile);
-    });
-  });
-}
-
-function waitForTabAndInsert(tabId, text, profile) {
-  let completed = false;
-
-  const listener = (updatedTabId, changeInfo) => {
-    if (updatedTabId !== tabId || changeInfo.status !== "complete" || completed) {
-      return;
-    }
-
-    completed = true;
-    chrome.tabs.onUpdated.removeListener(listener);
-    executeInsert(tabId, text, profile);
-  };
-
-  chrome.tabs.onUpdated.addListener(listener);
-
-  setTimeout(() => {
-    if (completed) {
-      return;
-    }
-
-    chrome.tabs.onUpdated.removeListener(listener);
-    executeInsert(tabId, text, profile);
-  }, 15000);
-}
-
-function executeInsert(tabId, text, profile) {
-  chrome.scripting.executeScript(
-    {
-      target: { tabId },
-      func: insertTextIntoPage,
-      args: [text, profile || {}]
-    },
-    () => {
-      if (chrome.runtime.lastError) {
-        console.warn("executeScript error:", chrome.runtime.lastError.message);
-      }
-    }
-  );
-}
-
-function insertTextIntoPage(text, profile) {
-  const selectors = Array.isArray(profile?.selectors) && profile.selectors.length > 0
-    ? profile.selectors
-    : ["textarea", "div[contenteditable=\"true\"]"];
-
-  const intervalMs = Number(profile?.intervalMs) > 0 ? Number(profile.intervalMs) : 200;
-  const timeoutMs = Number(profile?.timeoutMs) > 0 ? Number(profile.timeoutMs) : 15000;
-  const usePasteFirst = Boolean(profile?.usePasteFirst);
-
-  const isEditableElement = (element) => {
-    if (!element) {
-      return false;
-    }
-
-    if (element.tagName === "TEXTAREA") {
-      return true;
-    }
-
-    if (element.tagName === "INPUT" && element.type !== "hidden") {
-      return true;
-    }
-
-    const contenteditable = element.getAttribute("contenteditable");
-    return contenteditable === "true" || contenteditable === "plaintext-only" || element.isContentEditable;
-  };
-
-  const findInputElement = () => {
-    for (const selector of selectors) {
-      const candidate = document.querySelector(selector);
-      if (!candidate) {
-        continue;
-      }
-
-      if (isEditableElement(candidate)) {
-        return candidate;
-      }
-
-      const nestedEditable = candidate.querySelector(
-        'textarea, input[type="text"], input:not([type]), [contenteditable="true"], [contenteditable="plaintext-only"]'
-      );
-      if (nestedEditable && isEditableElement(nestedEditable)) {
-        return nestedEditable;
-      }
-    }
-
-    return null;
-  };
-
-  const dispatchStandardEvents = (element) => {
-    ["input", "change", "keydown", "keyup"].forEach((eventType) => {
-      element.dispatchEvent(new Event(eventType, { bubbles: true, cancelable: true }));
-    });
-
-    try {
-      element.dispatchEvent(new InputEvent("input", {
-        bubbles: true,
-        cancelable: true,
-        inputType: "insertText",
-        data: text
-      }));
-    } catch {
-      // noop
-    }
-  };
-
-  const setNativeInputValue = (element, value) => {
-    const prototype = element.tagName === "TEXTAREA"
-      ? window.HTMLTextAreaElement.prototype
-      : window.HTMLInputElement.prototype;
-
-    const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
-    const setter = descriptor?.set;
-
-    if (setter) {
-      setter.call(element, value);
-    } else {
-      element.value = value;
-    }
-  };
-
-  const placeCursorAtEnd = (element) => {
-    const selection = window.getSelection();
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    range.collapse(false);
-    selection.removeAllRanges();
-    selection.addRange(range);
-  };
-
-  const tryPasteEvent = (element, value) => {
-    try {
-      if (typeof DataTransfer === "undefined" || typeof ClipboardEvent === "undefined") {
-        return false;
-      }
-
-      const clipboardData = new DataTransfer();
-      clipboardData.setData("text/plain", value);
-
-      const pasteEvent = new ClipboardEvent("paste", {
-        bubbles: true,
-        cancelable: true,
-        clipboardData
-      });
-
-      element.dispatchEvent(pasteEvent);
-      return Boolean(element.textContent && element.textContent.trim().length > 0);
-    } catch {
-      return false;
-    }
-  };
-
-  const clearEditableContent = (element) => {
-    try {
-      const selection = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(element);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    } catch {
-      // noop
-    }
-
-    try {
-      document.execCommand("delete");
-    } catch {
-      // noop
-    }
-
-    if (element.textContent) {
-      element.textContent = "";
-    }
-  };
-
-  const normalizeForCompare = (value) => String(value || "").replace(/\s+/g, " ").trim();
-
-  const isMeaningfullyInserted = (element, expectedValue) => {
-    const actual = normalizeForCompare(element.textContent);
-    const expected = normalizeForCompare(expectedValue);
-
-    if (!actual || !expected) {
-      return false;
-    }
-
-    if (actual === expected) {
-      return true;
-    }
-
-    // Некоторые редакторы схлопывают переносы строк, поэтому сравниваем по префиксу/суффиксу.
-    const head = expected.slice(0, Math.min(80, expected.length));
-    const tail = expected.slice(Math.max(0, expected.length - 80));
-    const longEnough = actual.length >= Math.floor(expected.length * 0.75);
-
-    return longEnough && actual.includes(head) && (tail.length < 20 || actual.includes(tail));
-  };
-
-  const setContentEditableValue = (element, value) => {
-    element.focus();
-    element.click();
-    clearEditableContent(element);
-
-    let inserted = false;
-
-    if (usePasteFirst) {
-      inserted = tryPasteEvent(element, value);
-    }
-
-    if (!inserted) {
-      try {
-        inserted = document.execCommand("insertText", false, value);
-      } catch {
-        inserted = false;
-      }
-    }
-
-    if (!inserted || !isMeaningfullyInserted(element, value)) {
-      element.textContent = value;
-    }
-
-    dispatchStandardEvents(element);
-    placeCursorAtEnd(element);
-  };
-
-  const tryInsert = (element, value) => {
-    if (!element) {
-      return false;
-    }
-
-    const isTextInput = element.tagName === "TEXTAREA" || element.tagName === "INPUT";
-
-    if (isTextInput) {
-      element.focus();
-      setNativeInputValue(element, value);
-      dispatchStandardEvents(element);
-      return true;
-    }
-
-    if (isEditableElement(element)) {
-      setContentEditableValue(element, value);
-      return true;
-    }
-
-    return false;
-  };
-
-  const waitForInput = setInterval(() => {
-    const inputElement = findInputElement();
-    if (!inputElement) {
-      return;
-    }
-
-    const inserted = tryInsert(inputElement, text);
-    if (!inserted) {
-      return;
-    }
-
-    clearInterval(waitForInput);
-    inputElement.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, intervalMs);
-
-  setTimeout(() => clearInterval(waitForInput), timeoutMs);
-}

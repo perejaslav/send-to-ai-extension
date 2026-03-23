@@ -9,7 +9,9 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - Auto-insert selected text into chat input
 - YouTube link integration for Gemini with URL normalization
 - Configurable services list (order, enable/disable, default service)
+- Separate show/hide toggle for special commands in the context menu
 - Unified extension icon for toolbar and context menu
+- Insertion result badge on the toolbar icon (`OK` / `ERR`)
 
 ## Supported AI Services
 
@@ -30,10 +32,10 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 
 ## Special Commands
 
-- **Send and translate to Qwen** - Translates selected text to Russian before sending
-- **Send and translate to ChatGPT** - Translates selected text to Russian before sending
-- **Summarize in ChatGPT** - Creates a concise summary of selected text
-- **Open in Gemini** - Opens a YouTube link in Gemini with a summary prompt (link context menu)
+- **Отправить и перевести в Qwen** - Translates selected text to Russian before sending
+- **Отправить и перевести в ChatGPT** - Translates selected text to Russian before sending
+- **Сделать саммари в ChatGPT** - Creates a concise summary of selected text
+- **Открыть в Gemini** - Opens a YouTube link in Gemini with a summary prompt (link context menu)
 - **Send to <service> (default)** - Quick action for the service selected in extension settings
 
 ## Installation
@@ -59,16 +61,22 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 ### YouTube Integration
 
 1. On any webpage, right-click a YouTube link (`youtube.com` or `youtu.be`)
-2. Choose **"Open in Gemini"** (separate link-context menu item)
+2. Choose **"Открыть в Gemini"** (separate link-context menu item)
 3. Gemini opens with a normalized YouTube URL and summary prompt
 
 ### Menu Configuration
 
 1. Open the extension settings from the browser extensions page
-2. Reorder services with the up/down buttons
+2. Reorder services with drag and drop
 3. Disable services you do not need
 4. Choose a default service for the quick action
-5. Click **Save**
+5. Optionally hide the special commands submenu
+6. Click **Save**
+
+### Toolbar Action
+
+- Clicking the toolbar icon opens the extension settings page
+- After sending text, the icon briefly shows `OK` when insertion succeeds and `ERR` when the page opens but no editor is found or insertion fails
 
 ## Technical Details
 
@@ -83,7 +91,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - `contextMenus` - Context menu access
 - `tabs` - Tab query/focus/update
 - `scripting` - Script injection
-- Host permissions for AI domains
+- Exact host permissions only for the supported AI domains
 
 ## Project Structure
 
@@ -91,9 +99,19 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 send-to-ai-extension/
 |- manifest.json
 |- background.js
+|- services.js
+|- settings.js
+|- menus.js
+|- youtube.js
+|- insertion.js
 |- options.html
 |- options.css
 |- options.js
+|- package.json
+|- test/
+|  |- menus.test.js
+|  |- settings.test.js
+|  |- youtube.test.js
 |- icon16.png
 |- icon48.png
 |- icon128.png
@@ -101,7 +119,20 @@ send-to-ai-extension/
 |- README.en.md
 ```
 
+## Checks
+
+- `npm run test` - run unit tests
+- `npm run check` - run unit tests plus syntax checks for the extension modules
+
 ## Changelog
+
+### v2.4
+
+- Tightened `host_permissions` to the exact supported service domains and added `aistudio.google.com`
+- Split `background.js` into separate modules for services, settings, menus, YouTube handling, and text insertion
+- Added toolbar badge feedback for insertion results (`OK` / `ERR`)
+- Clicking the toolbar icon now opens the settings page
+- Moved special commands into a dedicated submenu and made them configurable from settings
 
 ### v2.3
 

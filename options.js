@@ -1,37 +1,24 @@
-const SETTINGS_STORAGE_KEYS = ["serviceOrder", "enabledServices", "defaultServiceId"];
+import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
+import { SERVICE_CONFIGS } from "./services.js";
 
 const servicesListElement = document.getElementById("servicesList");
 const defaultServiceSelectElement = document.getElementById("defaultServiceSelect");
 const saveButtonElement = document.getElementById("saveButton");
 const resetButtonElement = document.getElementById("resetButton");
 const statusElement = document.getElementById("status");
+const showSpecialActionsElement = document.getElementById("showSpecialActions");
 
 const state = {
   services: [],
   settings: {
     serviceOrder: [],
     enabledServices: {},
-    defaultServiceId: null
+    defaultServiceId: null,
+    showSpecialActions: true
   }
 };
 
-function fetchServiceConfigs() {
-  return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage({ type: "getServiceConfigs" }, (response) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      if (!response || !Array.isArray(response.services)) {
-        reject(new Error("Invalid service config response"));
-        return;
-      }
-
-      resolve(response);
-    });
-  });
-}
+let draggedServiceId = null;
 
 function loadStoredSettings() {
   return new Promise((resolve, reject) => {
@@ -51,7 +38,8 @@ function saveSettings() {
     chrome.storage.sync.set({
       serviceOrder: state.settings.serviceOrder,
       enabledServices: state.settings.enabledServices,
-      defaultServiceId: state.settings.defaultServiceId
+      defaultServiceId: state.settings.defaultServiceId,
+      showSpecialActions: state.settings.showSpecialActions !== false
     }, () => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
@@ -63,53 +51,6 @@ function saveSettings() {
   });
 }
 
-function normalizeSettings(rawSettings) {
-  const allServiceIds = state.services.map((service) => service.id);
-  const source = rawSettings && typeof rawSettings === "object" ? rawSettings : {};
-
-  const orderFromStorage = Array.isArray(source.serviceOrder) ? source.serviceOrder : [];
-  const normalizedOrder = [];
-  const seen = new Set();
-
-  for (const serviceId of orderFromStorage) {
-    if (!allServiceIds.includes(serviceId) || seen.has(serviceId)) {
-      continue;
-    }
-
-    seen.add(serviceId);
-    normalizedOrder.push(serviceId);
-  }
-
-  for (const serviceId of allServiceIds) {
-    if (seen.has(serviceId)) {
-      continue;
-    }
-
-    seen.add(serviceId);
-    normalizedOrder.push(serviceId);
-  }
-
-  const enabledFromStorage = source.enabledServices && typeof source.enabledServices === "object"
-    ? source.enabledServices
-    : {};
-
-  const normalizedEnabled = {};
-  for (const serviceId of allServiceIds) {
-    normalizedEnabled[serviceId] = typeof enabledFromStorage[serviceId] === "boolean"
-      ? enabledFromStorage[serviceId]
-      : true;
-  }
-
-  const enabledServiceIds = normalizedOrder.filter((serviceId) => normalizedEnabled[serviceId]);
-  const hasValidDefault = typeof source.defaultServiceId === "string" && enabledServiceIds.includes(source.defaultServiceId);
-  const fallbackDefaultId = enabledServiceIds[0] || normalizedOrder[0] || null;
-
-  return {
-    serviceOrder: normalizedOrder,
-    enabledServices: normalizedEnabled,
-    defaultServiceId: hasValidDefault ? source.defaultServiceId : fallbackDefaultId
-  };
-}
 
 function getServiceTitle(serviceId) {
   const service = state.services.find((item) => item.id === serviceId);
@@ -121,31 +62,81 @@ function setStatus(text, isError) {
   statusElement.style.color = isError ? "#b91c1c" : "#166534";
 }
 
-function moveService(serviceId, direction) {
-  const currentIndex = state.settings.serviceOrder.indexOf(serviceId);
-  if (currentIndex < 0) {
+function reorderService(draggedId, targetId, placeAfter = false) {
+  if (!draggedId || !targetId || draggedId === targetId) {
     return;
   }
 
-  const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-  if (targetIndex < 0 || targetIndex >= state.settings.serviceOrder.length) {
+  const currentOrder = [...state.settings.serviceOrder];
+  const draggedIndex = currentOrder.indexOf(draggedId);
+  const targetIndex = currentOrder.indexOf(targetId);
+
+  if (draggedIndex < 0 || targetIndex < 0) {
     return;
   }
 
-  const nextOrder = [...state.settings.serviceOrder];
-  const swappedId = nextOrder[targetIndex];
-  nextOrder[targetIndex] = nextOrder[currentIndex];
-  nextOrder[currentIndex] = swappedId;
-  state.settings.serviceOrder = nextOrder;
+  currentOrder.splice(draggedIndex, 1);
+
+  const adjustedTargetIndex = currentOrder.indexOf(targetId);
+  const insertIndex = placeAfter ? adjustedTargetIndex + 1 : adjustedTargetIndex;
+  currentOrder.splice(insertIndex, 0, draggedId);
+
+  state.settings.serviceOrder = currentOrder;
   render();
 }
 
 function renderServicesList() {
   servicesListElement.textContent = "";
 
-  state.settings.serviceOrder.forEach((serviceId, index) => {
+  state.settings.serviceOrder.forEach((serviceId) => {
     const row = document.createElement("div");
     row.className = "service-row";
+    row.draggable = true;
+    row.dataset.serviceId = serviceId;
+
+    row.addEventListener("dragstart", (event) => {
+      draggedServiceId = serviceId;
+      row.classList.add("is-dragging");
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", serviceId);
+      }
+    });
+
+    row.addEventListener("dragend", () => {
+      draggedServiceId = null;
+      row.classList.remove("is-dragging", "drop-before", "drop-after");
+      servicesListElement.querySelectorAll(".service-row").forEach((item) => {
+        item.classList.remove("drop-before", "drop-after");
+      });
+    });
+
+    row.addEventListener("dragover", (event) => {
+      if (!draggedServiceId || draggedServiceId === serviceId) {
+        return;
+      }
+
+      event.preventDefault();
+      const bounds = row.getBoundingClientRect();
+      const placeAfter = event.clientY > bounds.top + bounds.height / 2;
+      row.classList.toggle("drop-before", !placeAfter);
+      row.classList.toggle("drop-after", placeAfter);
+    });
+
+    row.addEventListener("dragleave", () => {
+      row.classList.remove("drop-before", "drop-after");
+    });
+
+    row.addEventListener("drop", (event) => {
+      if (!draggedServiceId || draggedServiceId === serviceId) {
+        return;
+      }
+
+      event.preventDefault();
+      const bounds = row.getBoundingClientRect();
+      const placeAfter = event.clientY > bounds.top + bounds.height / 2;
+      reorderService(draggedServiceId, serviceId, placeAfter);
+    });
 
     const toggleLabel = document.createElement("label");
     toggleLabel.className = "service-toggle";
@@ -172,23 +163,13 @@ function renderServicesList() {
     const controls = document.createElement("div");
     controls.className = "service-controls";
 
-    const upButton = document.createElement("button");
-    upButton.type = "button";
-    upButton.className = "icon";
-    upButton.textContent = "↑";
-    upButton.title = "Сдвинуть вверх";
-    upButton.disabled = index === 0;
-    upButton.addEventListener("click", () => moveService(serviceId, "up"));
+    const dragHandle = document.createElement("span");
+    dragHandle.className = "drag-handle";
+    dragHandle.textContent = "::";
+    dragHandle.title = "Перетащи, чтобы изменить порядок";
+    dragHandle.setAttribute("aria-hidden", "true");
 
-    const downButton = document.createElement("button");
-    downButton.type = "button";
-    downButton.className = "icon";
-    downButton.textContent = "↓";
-    downButton.title = "Сдвинуть вниз";
-    downButton.disabled = index === state.settings.serviceOrder.length - 1;
-    downButton.addEventListener("click", () => moveService(serviceId, "down"));
-
-    controls.append(upButton, downButton);
+    controls.append(dragHandle);
 
     row.append(toggleLabel, controls);
     servicesListElement.append(row);
@@ -218,6 +199,7 @@ function renderDefaultSelect() {
 function render() {
   renderServicesList();
   renderDefaultSelect();
+  showSpecialActionsElement.checked = state.settings.showSpecialActions !== false;
 }
 
 async function handleSave() {
@@ -235,24 +217,15 @@ async function handleSave() {
 }
 
 function handleReset() {
-  const allIds = state.services.map((service) => service.id);
-  state.settings = {
-    serviceOrder: [...allIds],
-    enabledServices: Object.fromEntries(allIds.map((serviceId) => [serviceId, true])),
-    defaultServiceId: allIds[0] || null
-  };
+  state.settings = structuredClone(DEFAULT_SETTINGS);
   render();
   setStatus('Настройки сброшены. Нажми "Сохранить" для применения.', false);
 }
 
 async function init() {
   try {
-    const [configResponse, storedSettings] = await Promise.all([
-      fetchServiceConfigs(),
-      loadStoredSettings()
-    ]);
-
-    state.services = configResponse.services;
+    const storedSettings = await loadStoredSettings();
+    state.services = SERVICE_CONFIGS.map(({ id, title }) => ({ id, title }));
     state.settings = normalizeSettings(storedSettings);
     render();
   } catch (error) {
@@ -262,6 +235,10 @@ async function init() {
 
 defaultServiceSelectElement.addEventListener("change", () => {
   state.settings.defaultServiceId = defaultServiceSelectElement.value || null;
+});
+
+showSpecialActionsElement.addEventListener("change", () => {
+  state.settings.showSpecialActions = showSpecialActionsElement.checked;
 });
 
 saveButtonElement.addEventListener("click", handleSave);
