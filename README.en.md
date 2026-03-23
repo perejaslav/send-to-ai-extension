@@ -1,13 +1,13 @@
-# Send to AI Extension
+﻿# Send to AI Extension
 
-A Chrome/Chromium browser extension that adds a context menu to quickly send selected text to various AI assistants.
+A Chrome/Edge browser extension that adds context menu commands to quickly send selected text to popular AI assistants.
 
 ## Features
 
-Right-click on any selected text and choose an AI assistant to send it to. The extension will:
-- Open the AI chat in a new popup window (or focus existing tab)
-- Automatically insert the selected text into the input field
-- Support YouTube integration for quick video link sharing
+- Right-click selected text and send it to an AI assistant in one click
+- Reuse an already opened AI tab (focus + insert), or open a new popup window
+- Auto-insert selected text into chat input
+- YouTube link integration for Gemini with URL normalization
 
 ## Supported AI Services
 
@@ -23,19 +23,22 @@ Right-click on any selected text and choose an AI assistant to send it to. The e
 | **Qwen AI** | Send text, Translate to Russian |
 | **Ernie** | Send text |
 | **Minimax** | Send text |
+| **StepFun** | Send text |
 
 ## Special Commands
 
-- **Send and translate to Qwen** — Translates selected text to Russian before sending
-- **Send and translate to ChatGPT** — Translates selected text to Russian before sending
-- **Summarize in ChatGPT** — Creates a concise summary of the selected text
-- **Open YT Link in Gemini** — Sends YouTube video link to Gemini with a summary request (YouTube pages only, auto-cleans URL)
+- **Send and translate to Qwen** - Translates selected text to Russian before sending
+- **Send and translate to ChatGPT** - Translates selected text to Russian before sending
+- **Summarize in ChatGPT** - Creates a concise summary of selected text
+- **Open in Gemini** - Opens a YouTube link in Gemini with a summary prompt (link context menu)
 
 ## Installation
 
 1. Download or clone this repository
-2. Open Chrome and go to `chrome://extensions/`
-3. Enable **Developer mode** (toggle in top right)
+2. Open Chrome or Edge and go to extensions page
+   - Chrome: `chrome://extensions/`
+   - Edge: `edge://extensions/`
+3. Enable **Developer mode**
 4. Click **Load unpacked**
 5. Select the extension folder
 
@@ -45,54 +48,52 @@ Right-click on any selected text and choose an AI assistant to send it to. The e
 
 1. Select any text on a webpage
 2. Right-click to open context menu
-3. Navigate to **"Отправить в AI"** (Send to AI)
-4. Choose your preferred AI assistant
-5. A new window will open with your text ready to send
+3. Navigate to **"Отправить в AI"**
+4. Choose the target AI assistant
+5. The assistant page opens/focuses and your text is inserted into the input field
 
 ### YouTube Integration
 
-1. Open any YouTube video
-2. Right-click on the page **OR** select text
-3. Navigate to **"Отправить в AI"** (Send to AI)
-4. Choose **"Open YT Link in Gemini"**
-5. The video link will automatically open in Gemini with a prompt to extract a summary (URL parameters cleaned)
+1. On any webpage, right-click a YouTube link (`youtube.com` or `youtu.be`)
+2. Choose **"Open in Gemini"** (separate link-context menu item)
+3. Gemini opens with a normalized YouTube URL and summary prompt
 
 ## Technical Details
 
-- **Manifest V3** — Modern Chrome extension API
-- **Universal insertion** — Works with React, Next.js, Slate.js and other frameworks
-- **Polling** — Waits up to 20 seconds for input field to load
-- **YouTube URL cleaning** — Automatically removes `&list=`, `&pp=`, `&t=` and other parameters
+- **Manifest V3**
+- **Config-driven routing** for services and special actions
+- **Deterministic tab focus** (uses the most recently accessed matching tab)
+- **Robust insertion pipeline** with fallbacks for textarea/contenteditable editors
+- **Strict YouTube hostname validation** and URL cleanup
 
 ### Required Permissions
 
-- `contextMenus` — Context menu access
-- `tabs` — Tab management
-- `scripting` — Script injection
-- `windows` — Window management
-- Host permissions for AI service domains
+- `contextMenus` - Context menu access
+- `tabs` - Tab query/focus/update
+- `scripting` - Script injection
+- Host permissions for AI domains
 
 ## Project Structure
 
-```
+```text
 send-to-ai-extension/
-├── manifest.json       # Extension configuration
-├── background.js       # Main logic
-├── icon16.png          # 16x16 icon
-├── icon48.png          # 48x48 icon
-├── icon128.png         # 128x128 icon
-├── README.md           # Documentation (Russian)
-└── README.en.md        # Documentation (English)
+|- manifest.json
+|- background.js
+|- icon16.png
+|- icon48.png
+|- icon128.png
+|- README.md
+|- README.en.md
 ```
 
-## Contributing
+## Changelog
 
-Found a bug? Have an idea? Create an [Issue](https://github.com/perejaslav/send-to-ai-extension/issues) or Pull Request!
+### v2.1
+
+- Added **StepFun** (`https://stepfun.ai/chats/new`) to the context menu
+- Improved selected text insertion for StepFun
+- Bumped extension version to `2.1`
 
 ## License
 
 MIT License
-
----
-
-Made with ⚒️ by [perejaslav](https://github.com/perejaslav)

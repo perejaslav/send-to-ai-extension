@@ -1,803 +1,676 @@
-// Создаем главное меню и подменю при установке расширения
-chrome.runtime.onInstalled.addListener(() => {
-  // Главный пункт меню
-  chrome.contextMenus.create({
-    id: "sendToAI",
-    title: "Отправить в AI",
-    contexts: ["selection"]
-  });
+﻿const ROOT_MENU_ID = "sendToAI";
+const YOUTUBE_MENU_ID = "openYouTubeInGemini";
 
-  // Подменю для каждого AI-ассистента
-
-  chrome.contextMenus.create({
+const SERVICE_CONFIGS = [
+  {
     id: "sendToGrok",
-    parentId: "sendToAI",
     title: "Grok",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
+    urlPattern: "https://grok.com/*",
+    newUrl: "https://grok.com/",
+    profile: {
+      selectors: [
+        'textarea[placeholder*="Ask"]',
+        'textarea[placeholder*="Type"]',
+        'div[contenteditable="true"][role="textbox"]',
+        'div[contenteditable="true"]',
+        '[aria-label*="message"]',
+        '[aria-label*="input"]',
+        '[aria-label*="prompt"]',
+        'textarea',
+        'input[type="text"]'
+      ],
+      timeoutMs: 20000,
+      intervalMs: 200,
+      usePasteFirst: false
+    }
+  },
+  {
     id: "sendToChatGPT",
-    parentId: "sendToAI",
     title: "ChatGPT",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
+    urlPattern: "https://chatgpt.com/*",
+    newUrl: "https://chatgpt.com/",
+    profile: {
+      selectors: [
+        '#prompt-textarea',
+        'div[contenteditable="true"][role="textbox"]',
+        'div[contenteditable="true"]',
+        'textarea'
+      ]
+    }
+  },
+  {
     id: "sendToGemini",
-    parentId: "sendToAI",
     title: "Google Gemini",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
+    urlPattern: "https://gemini.google.com/*",
+    newUrl: "https://gemini.google.com/app",
+    profile: {
+      selectors: [
+        'div[aria-label*="Enter a prompt"]',
+        'div[aria-label*="prompt"]',
+        'div[contenteditable="true"]',
+        'textarea'
+      ]
+    }
+  },
+  {
     id: "sendToClaude",
-    parentId: "sendToAI",
     title: "Claude",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
+    urlPattern: "https://claude.ai/*",
+    newUrl: "https://claude.ai/new",
+    profile: {
+      selectors: [
+        'div[contenteditable="true"][role="textbox"]',
+        'div[contenteditable="true"]',
+        'textarea[placeholder*="How can Claude help"]',
+        'textarea'
+      ],
+      usePasteFirst: true,
+      timeoutMs: 20000
+    }
+  },
+  {
     id: "sendToDeepSeek",
-    parentId: "sendToAI",
     title: "DeepSeek",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
+    urlPattern: "https://chat.deepseek.com/*",
+    newUrl: "https://chat.deepseek.com/",
+    profile: {
+      selectors: [
+        'textarea[placeholder*="Ask"]',
+        'textarea[placeholder*="Type"]',
+        'textarea',
+        'div[contenteditable="true"]',
+        '[aria-label*="prompt"]',
+        '[aria-label*="message"]'
+      ]
+    }
+  },
+  {
     id: "sendToZai",
-    parentId: "sendToAI",
     title: "Z.ai",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
+    urlPattern: "https://chat.z.ai/*",
+    newUrl: "https://chat.z.ai/",
+    profile: {
+      selectors: ['#chat-input', 'textarea', 'div[contenteditable="true"]'],
+      intervalMs: 100,
+      timeoutMs: 10000
+    }
+  },
+  {
     id: "sendToKimi",
-    parentId: "sendToAI",
     title: "Kimi AI",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
+    urlPattern: "https://www.kimi.com/*",
+    newUrl: "https://www.kimi.com/",
+    profile: {
+      selectors: [
+        '.chat-input-editor',
+        'div[contenteditable="true"]',
+        'textarea',
+        'input[type="text"]'
+      ]
+    }
+  },
+  {
     id: "sendToQwen",
-    parentId: "sendToAI",
     title: "Qwen AI",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
+    urlPattern: "https://chat.qwen.ai/*",
+    newUrl: "https://chat.qwen.ai/",
+    profile: {
+      selectors: ['textarea', 'div[contenteditable="true"]'],
+      intervalMs: 100,
+      timeoutMs: 10000
+    }
+  },
+  {
     id: "sendToErnie",
-    parentId: "sendToAI",
     title: "Ernie",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
+    urlPattern: "https://ernie.baidu.com/*",
+    newUrl: "https://ernie.baidu.com/chat",
+    profile: {
+      selectors: [
+        '[data-slate-editor="true"]',
+        'div[contenteditable="true"][role="textbox"]',
+        'div[contenteditable="true"]'
+      ],
+      usePasteFirst: true,
+      timeoutMs: 20000
+    }
+  },
+  {
     id: "sendToMinimax",
-    parentId: "sendToAI",
     title: "Minimax",
-    contexts: ["selection"]
-  });
+    urlPattern: "https://agent.minimax.io/*",
+    newUrl: "https://agent.minimax.io/",
+    profile: {
+      selectors: [
+        '[data-slate-editor="true"]',
+        'div[contenteditable="true"][role="textbox"]',
+        'div[contenteditable="true"]',
+        'textarea[placeholder*="Type"]',
+        'textarea[placeholder*="Ask"]',
+        '[class*="chat-input"]',
+        'textarea'
+      ],
+      usePasteFirst: true,
+      timeoutMs: 20000
+    }
+  },
+  {
+    id: "sendToStepFun",
+    title: "StepFun",
+    urlPattern: "https://stepfun.ai/*",
+    newUrl: "https://stepfun.ai/chats/new",
+    profile: {
+      selectors: [
+        '[data-slate-editor="true"]',
+        'div[contenteditable="true"][role="textbox"]',
+        'div[contenteditable="plaintext-only"]',
+        'div[contenteditable="true"]',
+        '[aria-label*="prompt"]',
+        '[aria-label*="message"]',
+        'textarea'
+      ],
+      usePasteFirst: true
+    }
+  }
+];
 
-  chrome.contextMenus.create({
+const SPECIAL_ACTIONS = [
+  {
     id: "sendAndTranslateToQwen",
-    parentId: "sendToAI",
     title: "Send and translate to Qwen",
-    contexts: ["selection"]
-  });
-
-  // --- НАЧАЛО ВСТАВКИ: Перевод в ChatGPT ---
-  chrome.contextMenus.create({
+    serviceId: "sendToQwen",
+    transformText: (selectedText) =>
+      "Ты - профессиональный переводчик. Переведи на русский язык разбиением на абзацы и минимальной литературной обработкой там, где это необходимо:\n\n" + selectedText
+  },
+  {
     id: "sendAndTranslateToChatGPT",
-    parentId: "sendToAI",
     title: "Send and translate to ChatGPT",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
+    serviceId: "sendToChatGPT",
+    transformText: (selectedText) =>
+      "Ты - профессиональный переводчик. Переведи на русский язык разбиением на абзацы и минимальной литературной обработкой там, где это необходимо:\n\n" + selectedText
+  },
+  {
     id: "summarizeInChatGPT",
-    parentId: "sendToAI",
     title: "Summarize in ChatGPT",
-    contexts: ["selection"]
-  });
-  // --- КОНЕЦ ВСТАВКИ ---
+    serviceId: "sendToChatGPT",
+    transformText: (selectedText) =>
+      "Без вступительного текста. Сделай краткое саммари --- \n\n" + selectedText
+  }
+];
 
-  // --- YouTube → Gemini: пункт меню только для ссылок ---
-  chrome.contextMenus.create({
-    id: "openYouTubeInGemini",
-    title: "Open in Gemini",
-    contexts: ["link"]
-  });
-  // --- КОНЕЦ YouTube → Gemini ---
+const SERVICES_BY_ID = Object.fromEntries(SERVICE_CONFIGS.map((service) => [service.id, service]));
+const SPECIAL_ACTIONS_BY_ID = Object.fromEntries(SPECIAL_ACTIONS.map((action) => [action.id, action]));
 
-});
-
-// Обработчик клика по пункту меню
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-
-  // --- YouTube → Gemini ---
-  if (info.menuItemId === "openYouTubeInGemini") {
-    const linkUrl = info.linkUrl || "";
-    // Работаем только с youtube.com и youtu.be
-    if (!linkUrl.includes("youtube.com") && !linkUrl.includes("youtu.be")) return;
-
-    // Очищаем URL: оставляем только ?v=VIDEO_ID
-    let cleanUrl = linkUrl;
-    try {
-      const url = new URL(linkUrl);
-      if (url.hostname.includes("youtube.com")) {
-        const videoId = url.searchParams.get("v");
-        if (videoId) {
-          cleanUrl = "https://www.youtube.com/watch?v=" + videoId;
-        } else {
-          // Для других YouTube-страниц (плейлисты и т.д.) — убираем лишние параметры
-          const keepParams = ["v", "list", "index"];
-          const newParams = new URLSearchParams();
-          for (const p of keepParams) {
-            if (url.searchParams.has(p)) newParams.set(p, url.searchParams.get(p));
-          }
-          url.search = newParams.toString();
-          cleanUrl = url.toString();
-        }
-      } else if (url.hostname === "youtu.be") {
-        // youtu.be/VIDEO_ID → полная ссылка
-        const videoId = url.pathname.replace("/", "");
-        cleanUrl = "https://www.youtube.com/watch?v=" + videoId;
-      }
-    } catch (e) {
-      cleanUrl = linkUrl;
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.removeAll(() => {
+    if (chrome.runtime.lastError) {
+      console.warn("contextMenus.removeAll error:", chrome.runtime.lastError.message);
     }
 
-    const textToInsert = cleanUrl + "\n\nТвоя задача — обработать предоставленный ролик: извлечь всю важную информацию и удалить \"воду\".\n\nЧто считается важной информацией:\n- Факты, цифры и конкретные данные\n- Ключевые идеи и выводы автора\n- Действия, задачи и решения\n\nСохрани ВСЕ содержательные детали БЕЗ ИСКЛЮЧЕНИЯ. Не сокращай намеренно, если это грозит потерей смысла. Результат должен быть точным и полностью сохранять смысл оригинала.";
-    openAndInsertText("https://gemini.google.com/*", "https://gemini.google.com/app", textToInsert, insertTextToGemini);
+    safeCreateContextMenu({
+      id: ROOT_MENU_ID,
+      title: "Отправить в AI",
+      contexts: ["selection"]
+    });
+
+    for (const service of SERVICE_CONFIGS) {
+      safeCreateContextMenu({
+        id: service.id,
+        parentId: ROOT_MENU_ID,
+        title: service.title,
+        contexts: ["selection"]
+      });
+    }
+
+    for (const action of SPECIAL_ACTIONS) {
+      safeCreateContextMenu({
+        id: action.id,
+        parentId: ROOT_MENU_ID,
+        title: action.title,
+        contexts: ["selection"]
+      });
+    }
+
+    // Отдельный пункт только для ссылок.
+    safeCreateContextMenu({
+      id: YOUTUBE_MENU_ID,
+      title: "Open in Gemini",
+      contexts: ["link"]
+    });
+  });
+});
+
+chrome.contextMenus.onClicked.addListener((info) => {
+  if (info.menuItemId === YOUTUBE_MENU_ID) {
+    handleYouTubeLinkAction(info.linkUrl || "");
     return;
   }
-  // --- КОНЕЦ YouTube → Gemini ---
 
-  if (!info.selectionText) return;
+  if (!info.selectionText) {
+    return;
+  }
 
   const selectedText = info.selectionText;
 
-  // Определяем, какой AI-ассистент выбран
-  switch (info.menuItemId) {
-    case "sendToQwen":
-      openAndInsertText("https://chat.qwen.ai/*", "https://chat.qwen.ai/", selectedText, insertTextToQwen);
-      break;
-    case "sendToErnie":
-      openAndInsertText("https://ernie.baidu.com/*", "https://ernie.baidu.com/chat", selectedText, insertTextToErnie);
-      break;
-    case "sendToMinimax":
-      openAndInsertText("https://agent.minimax.io/*", "https://agent.minimax.io/", selectedText, insertTextToMinimax);
-      break;
-    case "sendAndTranslateToQwen":
-      const textWithTranslatePrompt = "Ты - профессиональный переводчик. Переведи на русский язык разбиением на абзацы и минимальной литературной обработкой там, где это необходимо:\n\n" + selectedText;
-      openAndInsertText("https://chat.qwen.ai/*", "https://chat.qwen.ai/", textWithTranslatePrompt, insertTextToQwen);
-      break;
-    case "sendToGrok":
-      openAndInsertText("https://grok.com/*", "https://grok.com/", selectedText, insertTextToGrok);
-      break;
-    case "sendToZai":
-      openAndInsertText("https://chat.z.ai/*", "https://chat.z.ai/", selectedText, insertTextToZai);
-      break;
-    case "sendToDeepSeek":
-      openAndInsertText("https://chat.deepseek.com/*", "https://chat.deepseek.com/", selectedText, insertTextToDeepSeek);
-      break;
-    case "sendToClaude":
-      openAndInsertText("https://claude.ai/*", "https://claude.ai/new", selectedText, insertTextToClaude);
-      break;
-    case "sendToKimi":
-      openAndInsertText("https://www.kimi.com/*", "https://www.kimi.com/", selectedText, insertTextToKimi);
-      break;
-    case "sendToChatGPT":
-      openAndInsertText("https://chatgpt.com/*", "https://chatgpt.com/", selectedText, insertTextToChatGPT);
-      break;
-    // --- НАЧАЛО ВСТАВКИ ---
-    case "sendAndTranslateToChatGPT":
-      const textForChatGPT = "Ты - профессиональный переводчик. Переведи на русский язык разбиением на абзацы и минимальной литературной обработкой там, где это необходимо:\n\n" + selectedText;
-      openAndInsertText("https://chatgpt.com/*", "https://chatgpt.com/", textForChatGPT, insertTextToChatGPT);
-      break;
-    // --- КОНЕЦ ВСТАВКИ ---	  
-    case "sendToGemini":
-      openAndInsertText("https://gemini.google.com/*", "https://gemini.google.com/app", selectedText, insertTextToGemini);
-      break;
-    case "summarizeInChatGPT":
-      const textForSummary = "Без вступительного текста. Сделай краткое саммари --- \n\n" + selectedText;
-      openAndInsertText("https://chatgpt.com/*", "https://chatgpt.com/", textForSummary, insertTextToChatGPT);
-      break;
+  const directService = SERVICES_BY_ID[info.menuItemId];
+  if (directService) {
+    openAndInsertText(directService, selectedText);
+    return;
   }
+
+  const specialAction = SPECIAL_ACTIONS_BY_ID[info.menuItemId];
+  if (!specialAction) {
+    return;
+  }
+
+  const targetService = SERVICES_BY_ID[specialAction.serviceId];
+  if (!targetService) {
+    return;
+  }
+
+  openAndInsertText(targetService, specialAction.transformText(selectedText));
 });
-// Универсальная функция для открытия всплывающего окна и вставки текста
-function openAndInsertText(urlPattern, newUrl, text, insertFunction) {
-  // Ищем открытые окна с нужным URL
-  chrome.tabs.query({ url: urlPattern }, (tabs) => {
-    if (tabs.length > 0) {
-      // Если окно/вкладка уже открыта, фокусируемся на окне и вставляем текст
-      const existingTab = tabs[0];
-      chrome.windows.update(existingTab.windowId, { focused: true }, () => {
-        chrome.tabs.update(existingTab.id, { active: true }, () => {
-          chrome.scripting.executeScript({
-            target: { tabId: existingTab.id },
-            func: insertFunction,
-            args: [text]
-          });
-        });
-      });
-    } else {
-      // Если окно не открыто, создаем новое всплывающее окно
-      chrome.windows.create({
-        url: newUrl,
-        type: 'popup',
+
+function safeCreateContextMenu(options) {
+  chrome.contextMenus.create(options, () => {
+    if (chrome.runtime.lastError) {
+      console.warn(`contextMenus.create error for ${options.id}:`, chrome.runtime.lastError.message);
+    }
+  });
+}
+
+function handleYouTubeLinkAction(linkUrl) {
+  const cleanUrl = normalizeYouTubeUrl(linkUrl);
+  if (!cleanUrl) {
+    return;
+  }
+
+  const geminiService = SERVICES_BY_ID.sendToGemini;
+  const textToInsert = buildYouTubePrompt(cleanUrl);
+  openAndInsertText(geminiService, textToInsert);
+}
+
+function normalizeYouTubeUrl(linkUrl) {
+  let url;
+
+  try {
+    url = new URL(linkUrl);
+  } catch {
+    return null;
+  }
+
+  const host = url.hostname.toLowerCase();
+
+  if (host === "youtu.be") {
+    const videoId = url.pathname.split("/").filter(Boolean)[0];
+    if (!videoId) {
+      return null;
+    }
+    return `https://www.youtube.com/watch?v=${videoId}`;
+  }
+
+  const allowedYouTubeHosts = new Set(["youtube.com", "www.youtube.com", "m.youtube.com"]);
+  if (!allowedYouTubeHosts.has(host)) {
+    return null;
+  }
+
+  if (url.pathname === "/watch") {
+    const videoId = url.searchParams.get("v");
+    if (videoId) {
+      return `https://www.youtube.com/watch?v=${videoId}`;
+    }
+  }
+
+  const keepParams = ["v", "list", "index"];
+  const filteredParams = new URLSearchParams();
+  for (const param of keepParams) {
+    const value = url.searchParams.get(param);
+    if (value) {
+      filteredParams.set(param, value);
+    }
+  }
+
+  const normalizedBase = `https://www.youtube.com${url.pathname}`;
+  const normalizedQuery = filteredParams.toString();
+  return normalizedQuery ? `${normalizedBase}?${normalizedQuery}` : normalizedBase;
+}
+
+function buildYouTubePrompt(cleanUrl) {
+  return (
+    cleanUrl +
+    "\n\nТвоя задача — обработать предоставленный ролик: извлечь всю важную информацию и удалить \"воду\"." +
+    "\n\nЧто считается важной информацией:" +
+    "\n- Факты, цифры и конкретные данные" +
+    "\n- Ключевые идеи и выводы автора" +
+    "\n- Действия, задачи и решения" +
+    "\n\nСохрани ВСЕ содержательные детали БЕЗ ИСКЛЮЧЕНИЯ. Не сокращай намеренно, если это грозит потерей смысла. " +
+    "Результат должен быть точным и полностью сохранять смысл оригинала."
+  );
+}
+
+function openAndInsertText(service, text) {
+  chrome.tabs.query({ url: service.urlPattern }, (tabs) => {
+    if (chrome.runtime.lastError) {
+      console.warn("tabs.query error:", chrome.runtime.lastError.message);
+      return;
+    }
+
+    if (tabs && tabs.length > 0) {
+      const targetTab = pickMostRecentTab(tabs);
+      focusTabAndInsert(targetTab, text, service.profile);
+      return;
+    }
+
+    chrome.windows.create(
+      {
+        url: service.newUrl,
+        type: "popup",
         width: 1200,
         height: 800,
         left: 100,
         top: 100
-      }, (newWindow) => {
-        const newTab = newWindow.tabs[0];
-        // Ждем загрузки страницы
-        chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
-          if (tabId === newTab.id && changeInfo.status === 'complete') {
-            chrome.tabs.onUpdated.removeListener(listener);
-            // Вставляем текст после загрузки
-            chrome.scripting.executeScript({
-              target: { tabId: newTab.id },
-              func: insertFunction,
-              args: [text]
-            });
-          }
-        });
-      });
-    }
+      },
+      (newWindow) => {
+        if (chrome.runtime.lastError) {
+          console.warn("windows.create error:", chrome.runtime.lastError.message);
+          return;
+        }
+
+        const newTab = newWindow?.tabs?.[0];
+        if (!newTab?.id) {
+          return;
+        }
+
+        waitForTabAndInsert(newTab.id, text, service.profile);
+      }
+    );
   });
 }
 
-// Функция для вставки текста в Qwen
-function insertTextToQwen(text) {
-  const waitForInput = setInterval(() => {
-    const textarea = document.querySelector('textarea');
-
-    if (textarea) {
-      clearInterval(waitForInput);
-      textarea.focus();
-      textarea.value = text;
-
-      const inputEvent = new Event('input', { bubbles: true });
-      textarea.dispatchEvent(inputEvent);
-
-      const changeEvent = new Event('change', { bubbles: true });
-      textarea.dispatchEvent(changeEvent);
-
-      textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 100);
-
-  setTimeout(() => clearInterval(waitForInput), 10000);
+function pickMostRecentTab(tabs) {
+  return [...tabs].sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
 }
 
-// Функция для вставки текста в Ernie (Baidu) - для Slate.js через Clipboard
-function insertTextToErnie(text) {
-  const waitForInput = setInterval(() => {
-    let inputElement = document.querySelector('[data-slate-editor="true"]');
+function focusTabAndInsert(tab, text, profile) {
+  if (!tab?.id || !tab.windowId) {
+    return;
+  }
 
-    if (!inputElement) {
-      inputElement = document.querySelector('div[contenteditable="true"][role="textbox"]');
+  chrome.windows.update(tab.windowId, { focused: true }, () => {
+    if (chrome.runtime.lastError) {
+      console.warn("windows.update error:", chrome.runtime.lastError.message);
+      return;
     }
-    if (!inputElement) {
-      inputElement = document.querySelector('div[contenteditable="true"]');
-    }
 
-    if (inputElement) {
-      clearInterval(waitForInput);
-      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    chrome.tabs.update(tab.id, { active: true }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn("tabs.update error:", chrome.runtime.lastError.message);
+        return;
+      }
 
-      setTimeout(() => {
-        inputElement.focus();
-        inputElement.click();
-
-        setTimeout(() => {
-          // Используем ClipboardEvent для симуляции реальной вставки
-          const clipboardData = new DataTransfer();
-          clipboardData.setData('text/plain', text);
-
-          const pasteEvent = new ClipboardEvent('paste', {
-            bubbles: true,
-            cancelable: true,
-            clipboardData: clipboardData
-          });
-
-          // Сначала выделяем и удаляем текущее содержимое
-          const sel = window.getSelection();
-          const range = document.createRange();
-          range.selectNodeContents(inputElement);
-          sel.removeAllRanges();
-          sel.addRange(range);
-
-          // Отправляем paste событие - Slate должен его обработать
-          inputElement.dispatchEvent(pasteEvent);
-
-          // Fallback: если paste не сработал, пробуем execCommand
-          setTimeout(() => {
-            if (!inputElement.textContent || inputElement.textContent.trim() === '') {
-              document.execCommand('insertText', false, text);
-            }
-
-            // Триггерим input событие
-            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-          }, 100);
-
-        }, 100);
-      }, 300);
-    }
-  }, 200);
-
-  setTimeout(() => clearInterval(waitForInput), 20000);
+      executeInsert(tab.id, text, profile);
+    });
+  });
 }
 
-// Функция для вставки текста в Minimax
-function insertTextToMinimax(text) {
-  const waitForInput = setInterval(() => {
-    let inputElement = null;
+function waitForTabAndInsert(tabId, text, profile) {
+  let completed = false;
 
-    // Minimax - ищем различные типы полей ввода
-    const selectors = [
-      '[data-slate-editor="true"]',
-      'div[contenteditable="true"][role="textbox"]',
-      'div[contenteditable="true"]',
-      'textarea[placeholder*="输入"]',
-      'textarea[placeholder*="Type"]',
-      'textarea[placeholder*="Ask"]',
-      'textarea',
-      '[class*="input"]',
-      '[class*="editor"]',
-      '[class*="chat-input"]',
-      '[aria-label*="input"]',
-      '[aria-label*="message"]'
-    ];
+  const listener = (updatedTabId, changeInfo) => {
+    if (updatedTabId !== tabId || changeInfo.status !== "complete" || completed) {
+      return;
+    }
 
+    completed = true;
+    chrome.tabs.onUpdated.removeListener(listener);
+    executeInsert(tabId, text, profile);
+  };
+
+  chrome.tabs.onUpdated.addListener(listener);
+
+  setTimeout(() => {
+    if (completed) {
+      return;
+    }
+
+    chrome.tabs.onUpdated.removeListener(listener);
+    executeInsert(tabId, text, profile);
+  }, 15000);
+}
+
+function executeInsert(tabId, text, profile) {
+  chrome.scripting.executeScript(
+    {
+      target: { tabId },
+      func: insertTextIntoPage,
+      args: [text, profile || {}]
+    },
+    () => {
+      if (chrome.runtime.lastError) {
+        console.warn("executeScript error:", chrome.runtime.lastError.message);
+      }
+    }
+  );
+}
+
+function insertTextIntoPage(text, profile) {
+  const selectors = Array.isArray(profile?.selectors) && profile.selectors.length > 0
+    ? profile.selectors
+    : ["textarea", "div[contenteditable=\"true\"]"];
+
+  const intervalMs = Number(profile?.intervalMs) > 0 ? Number(profile.intervalMs) : 200;
+  const timeoutMs = Number(profile?.timeoutMs) > 0 ? Number(profile.timeoutMs) : 15000;
+  const usePasteFirst = Boolean(profile?.usePasteFirst);
+
+  const isEditableElement = (element) => {
+    if (!element) {
+      return false;
+    }
+
+    if (element.tagName === "TEXTAREA") {
+      return true;
+    }
+
+    if (element.tagName === "INPUT" && element.type !== "hidden") {
+      return true;
+    }
+
+    const contenteditable = element.getAttribute("contenteditable");
+    return contenteditable === "true" || contenteditable === "plaintext-only" || element.isContentEditable;
+  };
+
+  const findInputElement = () => {
     for (const selector of selectors) {
-      inputElement = document.querySelector(selector);
-      if (inputElement) break;
-    }
-
-    if (inputElement) {
-      clearInterval(waitForInput);
-      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-      setTimeout(() => {
-        inputElement.focus();
-        inputElement.click();
-
-        setTimeout(() => {
-          // Пробуем ClipboardEvent (для Slate.js и React)
-          const clipboardData = new DataTransfer();
-          clipboardData.setData('text/plain', text);
-
-          const pasteEvent = new ClipboardEvent('paste', {
-            bubbles: true,
-            cancelable: true,
-            clipboardData: clipboardData
-          });
-
-          const sel = window.getSelection();
-          const range = document.createRange();
-          range.selectNodeContents(inputElement);
-          sel.removeAllRanges();
-          sel.addRange(range);
-
-          inputElement.dispatchEvent(pasteEvent);
-
-          // Fallback: execCommand
-          setTimeout(() => {
-            if (!inputElement.textContent || inputElement.textContent.trim() === '') {
-              document.execCommand('insertText', false, text);
-            }
-
-            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-          }, 100);
-
-        }, 100);
-      }, 300);
-    }
-  }, 200);
-
-  setTimeout(() => clearInterval(waitForInput), 20000);
-}
-
-// Функция для вставки текста в Claude (React-based)
-function insertTextToClaude(text) {
-  const waitForInput = setInterval(() => {
-    let inputElement = null;
-
-    // Claude использует div[contenteditable="true"] с role="textbox"
-    const selectors = [
-      'div[contenteditable="true"][role="textbox"]',
-      'div[contenteditable="true"]',
-      'textarea[placeholder*="How can Claude help"]',
-      'textarea',
-      '[data-slate-editor="true"]',
-      '[class*="input"]',
-      '[class*="editor"]',
-      '[aria-label*="message"]',
-      '[aria-label*="input"]'
-    ];
-
-    for (const selector of selectors) {
-      inputElement = document.querySelector(selector);
-      if (inputElement) break;
-    }
-
-    if (inputElement) {
-      clearInterval(waitForInput);
-      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-      setTimeout(() => {
-        inputElement.focus();
-        inputElement.click();
-
-        setTimeout(() => {
-          // Для React используем ClipboardEvent
-          const clipboardData = new DataTransfer();
-          clipboardData.setData('text/plain', text);
-
-          const pasteEvent = new ClipboardEvent('paste', {
-            bubbles: true,
-            cancelable: true,
-            clipboardData: clipboardData
-          });
-
-          const sel = window.getSelection();
-          const range = document.createRange();
-          range.selectNodeContents(inputElement);
-          sel.removeAllRanges();
-          sel.addRange(range);
-
-          inputElement.dispatchEvent(pasteEvent);
-
-          // Fallback: execCommand
-          setTimeout(() => {
-            if (!inputElement.textContent || inputElement.textContent.trim() === '') {
-              document.execCommand('insertText', false, text);
-            }
-
-            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-          }, 100);
-
-        }, 100);
-      }, 300);
-    }
-  }, 200);
-
-  setTimeout(() => clearInterval(waitForInput), 20000);
-}
-
-// Функция для вставки текста в Grok (улучшенная версия)
-function insertTextToGrok(text) {
-  const waitForInput = setInterval(() => {
-    let inputElement = null;
-
-    // Расширенный поиск элементов ввода
-    const selectors = [
-      'textarea[placeholder*="Ask"]',
-      'textarea[placeholder*="Type"]',
-      'div[contenteditable="true"][role="textbox"]',
-      'div[contenteditable="true"]',
-      'textarea',
-      'div[data-testid*="input"]',
-      'div[class*="input"]',
-      'div[class*="composer"]',
-      'div[class*="prompt"]',
-      '[aria-label*="message"]',
-      '[aria-label*="input"]',
-      '[aria-label*="prompt"]',
-      'input[type="text"]'
-    ];
-
-    for (const selector of selectors) {
-      inputElement = document.querySelector(selector);
-      if (inputElement) break;
-    }
-
-    if (inputElement) {
-      clearInterval(waitForInput);
-
-      // Прокрутка к элементу
-      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-      // Небольшая задержка перед вставкой
-      setTimeout(() => {
-        inputElement.focus();
-
-        // Метод 1: Для textarea и input
-        if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLTextAreaElement.prototype,
-            'value'
-          )?.set || Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype,
-            'value'
-          )?.set;
-
-          if (nativeInputValueSetter) {
-            nativeInputValueSetter.call(inputElement, text);
-          } else {
-            inputElement.value = text;
-          }
-
-          // Триггер всех возможных событий
-          ['input', 'change', 'keydown', 'keyup'].forEach(eventType => {
-            const event = new Event(eventType, { bubbles: true, cancelable: true });
-            inputElement.dispatchEvent(event);
-          });
-        }
-        // Метод 2: Для contentEditable элементов
-        else if (inputElement.contentEditable === 'true') {
-          // Очистка содержимого
-          inputElement.innerHTML = '';
-
-          // Вставка через execCommand (старый, но надёжный метод)
-          inputElement.focus();
-          document.execCommand('insertText', false, text);
-
-          // Альтернативный метод через Clipboard API
-          if (!inputElement.textContent.includes(text)) {
-            inputElement.textContent = text;
-          }
-
-          // Триггер событий
-          ['input', 'change', 'keydown', 'keyup'].forEach(eventType => {
-            const event = new Event(eventType, { bubbles: true, cancelable: true });
-            inputElement.dispatchEvent(event);
-          });
-
-          // Установка курсора в конец
-          const range = document.createRange();
-          const sel = window.getSelection();
-          range.selectNodeContents(inputElement);
-          range.collapse(false);
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }
-
-        // Дополнительный триггер для React-приложений
-        const reactEvent = new InputEvent('input', {
-          bubbles: true,
-          cancelable: true,
-          inputType: 'insertText',
-          data: text
-        });
-        inputElement.dispatchEvent(reactEvent);
-
-      }, 300);
-    }
-  }, 200);
-
-  // Увеличенный таймаут ожидания
-  setTimeout(() => clearInterval(waitForInput), 20000);
-}
-
-// Функция для вставки текста в Z.ai
-function insertTextToZai(text) {
-  const waitForInput = setInterval(() => {
-    const textarea = document.querySelector('#chat-input') || document.querySelector('textarea');
-
-    if (textarea) {
-      clearInterval(waitForInput);
-      textarea.focus();
-      textarea.value = text;
-
-      const inputEvent = new Event('input', { bubbles: true });
-      textarea.dispatchEvent(inputEvent);
-
-      const changeEvent = new Event('change', { bubbles: true });
-      textarea.dispatchEvent(changeEvent);
-
-      textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 100);
-
-  setTimeout(() => clearInterval(waitForInput), 10000);
-}
-
-// Функция для вставки текста в DeepSeek (универсальная)
-function insertTextToDeepSeek(text) {
-  const waitForInput = setInterval(() => {
-    let inputElement = null;
-
-    inputElement = document.querySelector('textarea');
-    if (!inputElement) {
-      inputElement = document.querySelector('div[contenteditable="true"]');
-    }
-    if (!inputElement) {
-      inputElement = document.querySelector('input[type="text"]');
-    }
-    if (!inputElement) {
-      inputElement = document.querySelector('textarea[placeholder*="Ask"]') ||
-        document.querySelector('textarea[placeholder*="Type"]') ||
-        document.querySelector('textarea[placeholder*="Enter"]');
-    }
-    if (!inputElement) {
-      inputElement = document.querySelector('[aria-label*="input"]') ||
-        document.querySelector('[aria-label*="prompt"]') ||
-        document.querySelector('[aria-label*="message"]');
-    }
-
-    if (inputElement) {
-      clearInterval(waitForInput);
-      inputElement.focus();
-
-      if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-        inputElement.value = text;
-
-        const inputEvent = new Event('input', { bubbles: true });
-        inputElement.dispatchEvent(inputEvent);
-
-        const changeEvent = new Event('change', { bubbles: true });
-        inputElement.dispatchEvent(changeEvent);
-      } else if (inputElement.contentEditable === 'true') {
-        const paragraph = inputElement.querySelector('p');
-        if (paragraph) {
-          paragraph.textContent = text;
-        } else {
-          inputElement.textContent = text;
-        }
-
-        const inputEvent = new Event('input', { bubbles: true });
-        inputElement.dispatchEvent(inputEvent);
-
-        const range = document.createRange();
-        const sel = window.getSelection();
-        range.selectNodeContents(inputElement);
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
+      const candidate = document.querySelector(selector);
+      if (!candidate) {
+        continue;
       }
 
-      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 200);
-
-  setTimeout(() => clearInterval(waitForInput), 15000);
-}
-
-
-// Функция для вставки текста в Kimi AI
-function insertTextToKimi(text) {
-  const waitForInput = setInterval(() => {
-    let inputElement = null;
-
-    // Kimi использует div[contenteditable="true"] с классом chat-input-editor
-    inputElement = document.querySelector('div[contenteditable="true"]');
-    if (!inputElement) {
-      inputElement = document.querySelector('.chat-input-editor');
-    }
-    if (!inputElement) {
-      // Пробуем найти textarea как запасной вариант
-      inputElement = document.querySelector('textarea');
-    }
-    if (!inputElement) {
-      inputElement = document.querySelector('input[type="text"]');
-    }
-
-    if (inputElement) {
-      clearInterval(waitForInput);
-      inputElement.focus();
-
-      if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-        inputElement.value = text;
-
-        const inputEvent = new Event('input', { bubbles: true });
-        inputElement.dispatchEvent(inputEvent);
-
-        const changeEvent = new Event('change', { bubbles: true });
-        inputElement.dispatchEvent(changeEvent);
-      } else if (inputElement.contentEditable === 'true') {
-        // Для Kimi используем execCommand - это единственный способ, который работает
-        document.execCommand('insertText', false, text);
-
-        const inputEvent = new Event('input', { bubbles: true });
-        inputElement.dispatchEvent(inputEvent);
+      if (isEditableElement(candidate)) {
+        return candidate;
       }
 
-      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 200);
-
-  setTimeout(() => clearInterval(waitForInput), 15000);
-}
-
-
-// Функция для вставки текста в ChatGPT
-function insertTextToChatGPT(text) {
-  const waitForInput = setInterval(() => {
-    let inputElement = null;
-
-    // ChatGPT использует contenteditable div
-    inputElement = document.querySelector('div[contenteditable="true"]');
-    if (!inputElement) {
-      // Пробуем найти по id (ChatGPT может использовать prompt-textarea)
-      inputElement = document.querySelector('#prompt-textarea');
-    }
-    if (!inputElement) {
-      // Пробуем найти textarea
-      inputElement = document.querySelector('textarea');
-    }
-    if (!inputElement) {
-      // Ищем по data-id
-      inputElement = document.querySelector('[data-id*="root"]');
+      const nestedEditable = candidate.querySelector(
+        'textarea, input[type="text"], input:not([type]), [contenteditable="true"], [contenteditable="plaintext-only"]'
+      );
+      if (nestedEditable && isEditableElement(nestedEditable)) {
+        return nestedEditable;
+      }
     }
 
-    if (inputElement) {
-      clearInterval(waitForInput);
-      inputElement.focus();
+    return null;
+  };
 
-      if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-        inputElement.value = text;
+  const dispatchStandardEvents = (element) => {
+    ["input", "change", "keydown", "keyup"].forEach((eventType) => {
+      element.dispatchEvent(new Event(eventType, { bubbles: true, cancelable: true }));
+    });
 
-        const inputEvent = new Event('input', { bubbles: true });
-        inputElement.dispatchEvent(inputEvent);
+    try {
+      element.dispatchEvent(new InputEvent("input", {
+        bubbles: true,
+        cancelable: true,
+        inputType: "insertText",
+        data: text
+      }));
+    } catch {
+      // noop
+    }
+  };
 
-        const changeEvent = new Event('change', { bubbles: true });
-        inputElement.dispatchEvent(changeEvent);
-      } else if (inputElement.contentEditable === 'true') {
-        // Для ChatGPT используем execCommand (как для Kimi)
-        document.execCommand('insertText', false, text);
+  const setNativeInputValue = (element, value) => {
+    const prototype = element.tagName === "TEXTAREA"
+      ? window.HTMLTextAreaElement.prototype
+      : window.HTMLInputElement.prototype;
 
-        const inputEvent = new Event('input', { bubbles: true });
-        inputElement.dispatchEvent(inputEvent);
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
+    const setter = descriptor?.set;
+
+    if (setter) {
+      setter.call(element, value);
+    } else {
+      element.value = value;
+    }
+  };
+
+  const placeCursorAtEnd = (element) => {
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  };
+
+  const tryPasteEvent = (element, value) => {
+    try {
+      if (typeof DataTransfer === "undefined" || typeof ClipboardEvent === "undefined") {
+        return false;
       }
 
-      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 200);
+      const clipboardData = new DataTransfer();
+      clipboardData.setData("text/plain", value);
 
-  setTimeout(() => clearInterval(waitForInput), 15000);
-}
+      const pasteEvent = new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData
+      });
 
-// Функция для вставки текста в Google Gemini
-function insertTextToGemini(text) {
-  const waitForInput = setInterval(() => {
-    let inputElement = null;
+      element.dispatchEvent(pasteEvent);
+      return Boolean(element.textContent && element.textContent.trim().length > 0);
+    } catch {
+      return false;
+    }
+  };
 
-    // Google Gemini использует contenteditable div
-    inputElement = document.querySelector('div[contenteditable="true"]');
-    if (!inputElement) {
-      // Пробуем найти по aria-label
-      inputElement = document.querySelector('div[aria-label*="prompt"]');
-    }
-    if (!inputElement) {
-      inputElement = document.querySelector('div[aria-label*="Enter a prompt"]');
-    }
-    if (!inputElement) {
-      // Пробуем найти textarea
-      inputElement = document.querySelector('textarea');
-    }
-    if (!inputElement) {
-      // Ищем по классам
-      inputElement = document.querySelector('[class*="input"]');
+  const clearEditableContent = (element) => {
+    try {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } catch {
+      // noop
     }
 
-    if (inputElement) {
-      clearInterval(waitForInput);
-      inputElement.focus();
+    try {
+      document.execCommand("delete");
+    } catch {
+      // noop
+    }
 
-      if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-        inputElement.value = text;
+    if (element.textContent) {
+      element.textContent = "";
+    }
+  };
 
-        const inputEvent = new Event('input', { bubbles: true });
-        inputElement.dispatchEvent(inputEvent);
+  const normalizeForCompare = (value) => String(value || "").replace(/\s+/g, " ").trim();
 
-        const changeEvent = new Event('change', { bubbles: true });
-        inputElement.dispatchEvent(changeEvent);
-      } else if (inputElement.contentEditable === 'true') {
-        // Для Gemini используем execCommand (как для Kimi и ChatGPT)
-        document.execCommand('insertText', false, text);
+  const isMeaningfullyInserted = (element, expectedValue) => {
+    const actual = normalizeForCompare(element.textContent);
+    const expected = normalizeForCompare(expectedValue);
 
-        const inputEvent = new Event('input', { bubbles: true });
-        inputElement.dispatchEvent(inputEvent);
+    if (!actual || !expected) {
+      return false;
+    }
+
+    if (actual === expected) {
+      return true;
+    }
+
+    // Некоторые редакторы схлопывают переносы строк, поэтому сравниваем по префиксу/суффиксу.
+    const head = expected.slice(0, Math.min(80, expected.length));
+    const tail = expected.slice(Math.max(0, expected.length - 80));
+    const longEnough = actual.length >= Math.floor(expected.length * 0.75);
+
+    return longEnough && actual.includes(head) && (tail.length < 20 || actual.includes(tail));
+  };
+
+  const setContentEditableValue = (element, value) => {
+    element.focus();
+    element.click();
+    clearEditableContent(element);
+
+    let inserted = false;
+
+    if (usePasteFirst) {
+      inserted = tryPasteEvent(element, value);
+    }
+
+    if (!inserted) {
+      try {
+        inserted = document.execCommand("insertText", false, value);
+      } catch {
+        inserted = false;
       }
-
-      inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, 200);
 
-  setTimeout(() => clearInterval(waitForInput), 15000);
+    if (!inserted || !isMeaningfullyInserted(element, value)) {
+      element.textContent = value;
+    }
+
+    dispatchStandardEvents(element);
+    placeCursorAtEnd(element);
+  };
+
+  const tryInsert = (element, value) => {
+    if (!element) {
+      return false;
+    }
+
+    const isTextInput = element.tagName === "TEXTAREA" || element.tagName === "INPUT";
+
+    if (isTextInput) {
+      element.focus();
+      setNativeInputValue(element, value);
+      dispatchStandardEvents(element);
+      return true;
+    }
+
+    if (isEditableElement(element)) {
+      setContentEditableValue(element, value);
+      return true;
+    }
+
+    return false;
+  };
+
+  const waitForInput = setInterval(() => {
+    const inputElement = findInputElement();
+    if (!inputElement) {
+      return;
+    }
+
+    const inserted = tryInsert(inputElement, text);
+    if (!inserted) {
+      return;
+    }
+
+    clearInterval(waitForInput);
+    inputElement.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, intervalMs);
+
+  setTimeout(() => clearInterval(waitForInput), timeoutMs);
 }
