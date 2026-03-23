@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Send to AI - Настройки</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="container">
+    <h1>Настройки Send to AI</h1>
+    <p class="lead">Включай или отключай сервисы, меняй порядок и выбери сервис по умолчанию для быстрого действия.</p>
+
+    <section class="panel">
+      <h2>Сервисы в контекстном меню</h2>
+      <div id="servicesList" class="services-list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Сервис по умолчанию</h2>
+      <label class="default-label" for="defaultServiceSelect">Быстрая команда "Отправить в ... (по умолчанию)"</label>
+      <select id="defaultServiceSelect"></select>
+    </section>
+
+    <div class="actions">
+      <button id="saveButton" type="button">Сохранить</button>
+      <button id="resetButton" type="button" class="secondary">Сбросить</button>
+      <span id="status" class="status" aria-live="polite"></span>
+    </div>
+  </main>
+
+  <script src="options.js"></script>
+</body>
+</html>

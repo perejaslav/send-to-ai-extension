@@ -8,6 +8,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - Reuse an already opened AI tab (focus + insert), or open a new popup window
 - Auto-insert selected text into chat input
 - YouTube link integration for Gemini with URL normalization
+- Configurable services list (order, enable/disable, default service)
 
 ## Supported AI Services
 
@@ -32,6 +33,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - **Send and translate to ChatGPT** - Translates selected text to Russian before sending
 - **Summarize in ChatGPT** - Creates a concise summary of selected text
 - **Open in Gemini** - Opens a YouTube link in Gemini with a summary prompt (link context menu)
+- **Send to <service> (default)** - Quick action for the service selected in extension settings
 
 ## Installation
 
@@ -59,6 +61,14 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 2. Choose **"Open in Gemini"** (separate link-context menu item)
 3. Gemini opens with a normalized YouTube URL and summary prompt
 
+### Menu Configuration
+
+1. Open the extension settings from the browser extensions page
+2. Reorder services with the up/down buttons
+3. Disable services you do not need
+4. Choose a default service for the quick action
+5. Click **Save**
+
 ## Technical Details
 
 - **Manifest V3**
@@ -80,6 +90,9 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 send-to-ai-extension/
 |- manifest.json
 |- background.js
+|- options.html
+|- options.css
+|- options.js
 |- icon16.png
 |- icon48.png
 |- icon128.png
@@ -88,6 +101,12 @@ send-to-ai-extension/
 ```
 
 ## Changelog
+
+### v2.3
+
+- Added an extension options page
+- Added configurable service order, enable/disable toggles, and default service selection
+- Added quick context menu item **"Send to <service> (default)"**
 
 ### v2.2
 

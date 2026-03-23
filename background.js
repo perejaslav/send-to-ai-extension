@@ -1,5 +1,7 @@
-﻿const ROOT_MENU_ID = "sendToAI";
+const ROOT_MENU_ID = "sendToAI";
 const YOUTUBE_MENU_ID = "openYouTubeInGemini";
+const QUICK_DEFAULT_MENU_ID = "sendToAIDefault";
+const SETTINGS_STORAGE_KEYS = ["serviceOrder", "enabledServices", "defaultServiceId"];
 
 const SERVICE_CONFIGS = [
   {
@@ -219,43 +221,172 @@ const SPECIAL_ACTIONS = [
 
 const SERVICES_BY_ID = Object.fromEntries(SERVICE_CONFIGS.map((service) => [service.id, service]));
 const SPECIAL_ACTIONS_BY_ID = Object.fromEntries(SPECIAL_ACTIONS.map((action) => [action.id, action]));
+const ALL_SERVICE_IDS = SERVICE_CONFIGS.map((service) => service.id);
+
+function buildDefaultSettings() {
+  const enabledServices = Object.fromEntries(ALL_SERVICE_IDS.map((serviceId) => [serviceId, true]));
+
+  return {
+    serviceOrder: [...ALL_SERVICE_IDS],
+    enabledServices,
+    defaultServiceId: ALL_SERVICE_IDS[0] || null
+  };
+}
+
+const DEFAULT_SETTINGS = buildDefaultSettings();
+
+function normalizeSettings(rawSettings) {
+  const source = rawSettings && typeof rawSettings === "object" ? rawSettings : {};
+
+  const orderFromStorage = Array.isArray(source.serviceOrder) ? source.serviceOrder : [];
+  const normalizedOrder = [];
+  const seen = new Set();
+
+  for (const serviceId of orderFromStorage) {
+    if (!ALL_SERVICE_IDS.includes(serviceId) || seen.has(serviceId)) {
+      continue;
+    }
+
+    seen.add(serviceId);
+    normalizedOrder.push(serviceId);
+  }
+
+  for (const serviceId of ALL_SERVICE_IDS) {
+    if (seen.has(serviceId)) {
+      continue;
+    }
+
+    seen.add(serviceId);
+    normalizedOrder.push(serviceId);
+  }
+
+  const enabledFromStorage = source.enabledServices && typeof source.enabledServices === "object"
+    ? source.enabledServices
+    : {};
+
+  const normalizedEnabled = {};
+  for (const serviceId of ALL_SERVICE_IDS) {
+    normalizedEnabled[serviceId] = typeof enabledFromStorage[serviceId] === "boolean"
+      ? enabledFromStorage[serviceId]
+      : true;
+  }
+
+  const enabledServiceIds = normalizedOrder.filter((serviceId) => normalizedEnabled[serviceId]);
+  const hasValidDefault = typeof source.defaultServiceId === "string" && enabledServiceIds.includes(source.defaultServiceId);
+  const fallbackDefaultId = enabledServiceIds[0] || normalizedOrder[0] || null;
+
+  return {
+    serviceOrder: normalizedOrder,
+    enabledServices: normalizedEnabled,
+    defaultServiceId: hasValidDefault ? source.defaultServiceId : fallbackDefaultId
+  };
+}
+
+function loadSettings(callback) {
+  chrome.storage.sync.get(SETTINGS_STORAGE_KEYS, (storedSettings) => {
+    if (chrome.runtime.lastError) {
+      console.warn("storage.sync.get error:", chrome.runtime.lastError.message);
+      callback(DEFAULT_SETTINGS);
+      return;
+    }
+
+    callback(normalizeSettings(storedSettings));
+  });
+}
+
+function isServiceEnabled(settings, serviceId) {
+  return settings.enabledServices[serviceId] !== false;
+}
+
+function rebuildContextMenus() {
+  loadSettings((settings) => {
+    chrome.contextMenus.removeAll(() => {
+      if (chrome.runtime.lastError) {
+        console.warn("contextMenus.removeAll error:", chrome.runtime.lastError.message);
+      }
+
+      safeCreateContextMenu({
+        id: ROOT_MENU_ID,
+        title: "Отправить в AI",
+        contexts: ["selection"]
+      });
+
+      const defaultService = settings.defaultServiceId ? SERVICES_BY_ID[settings.defaultServiceId] : null;
+      if (defaultService && isServiceEnabled(settings, defaultService.id)) {
+        safeCreateContextMenu({
+          id: QUICK_DEFAULT_MENU_ID,
+          title: `Отправить в ${defaultService.title} (по умолчанию)`,
+          contexts: ["selection"]
+        });
+      }
+
+      for (const serviceId of settings.serviceOrder) {
+        if (!isServiceEnabled(settings, serviceId)) {
+          continue;
+        }
+
+        const service = SERVICES_BY_ID[serviceId];
+        if (!service) {
+          continue;
+        }
+
+        safeCreateContextMenu({
+          id: service.id,
+          parentId: ROOT_MENU_ID,
+          title: service.title,
+          contexts: ["selection"]
+        });
+      }
+
+      for (const action of SPECIAL_ACTIONS) {
+        if (!isServiceEnabled(settings, action.serviceId)) {
+          continue;
+        }
+
+        safeCreateContextMenu({
+          id: action.id,
+          parentId: ROOT_MENU_ID,
+          title: action.title,
+          contexts: ["selection"]
+        });
+      }
+
+      safeCreateContextMenu({
+        id: YOUTUBE_MENU_ID,
+        title: "Open in Gemini",
+        contexts: ["link"]
+      });
+    });
+  });
+}
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.removeAll(() => {
-    if (chrome.runtime.lastError) {
-      console.warn("contextMenus.removeAll error:", chrome.runtime.lastError.message);
-    }
+  rebuildContextMenus();
+});
 
-    safeCreateContextMenu({
-      id: ROOT_MENU_ID,
-      title: "Отправить в AI",
-      contexts: ["selection"]
-    });
+chrome.runtime.onStartup.addListener(() => {
+  rebuildContextMenus();
+});
 
-    for (const service of SERVICE_CONFIGS) {
-      safeCreateContextMenu({
-        id: service.id,
-        parentId: ROOT_MENU_ID,
-        title: service.title,
-        contexts: ["selection"]
-      });
-    }
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "sync") {
+    return;
+  }
 
-    for (const action of SPECIAL_ACTIONS) {
-      safeCreateContextMenu({
-        id: action.id,
-        parentId: ROOT_MENU_ID,
-        title: action.title,
-        contexts: ["selection"]
-      });
-    }
+  const shouldRebuild = SETTINGS_STORAGE_KEYS.some((key) => Object.prototype.hasOwnProperty.call(changes, key));
+  if (shouldRebuild) {
+    rebuildContextMenus();
+  }
+});
 
-    // Отдельный пункт только для ссылок.
-    safeCreateContextMenu({
-      id: YOUTUBE_MENU_ID,
-      title: "Open in Gemini",
-      contexts: ["link"]
-    });
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (!message || message.type !== "getServiceConfigs") {
+    return;
+  }
+
+  sendResponse({
+    services: SERVICE_CONFIGS.map(({ id, title }) => ({ id, title })),
+    defaultSettings: DEFAULT_SETTINGS
   });
 });
 
@@ -269,11 +400,33 @@ chrome.contextMenus.onClicked.addListener((info) => {
     return;
   }
 
+  if (info.menuItemId === QUICK_DEFAULT_MENU_ID) {
+    loadSettings((settings) => {
+      if (!settings.defaultServiceId) {
+        return;
+      }
+
+      const defaultService = SERVICES_BY_ID[settings.defaultServiceId];
+      if (!defaultService || !isServiceEnabled(settings, defaultService.id)) {
+        return;
+      }
+
+      openAndInsertText(defaultService, info.selectionText);
+    });
+    return;
+  }
+
   const selectedText = info.selectionText;
 
   const directService = SERVICES_BY_ID[info.menuItemId];
   if (directService) {
-    openAndInsertText(directService, selectedText);
+    loadSettings((settings) => {
+      if (!isServiceEnabled(settings, directService.id)) {
+        return;
+      }
+
+      openAndInsertText(directService, selectedText);
+    });
     return;
   }
 
@@ -287,7 +440,13 @@ chrome.contextMenus.onClicked.addListener((info) => {
     return;
   }
 
-  openAndInsertText(targetService, specialAction.transformText(selectedText));
+  loadSettings((settings) => {
+    if (!isServiceEnabled(settings, targetService.id)) {
+      return;
+    }
+
+    openAndInsertText(targetService, specialAction.transformText(selectedText));
+  });
 });
 
 function safeCreateContextMenu(options) {
