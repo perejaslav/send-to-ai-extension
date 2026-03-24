@@ -97,7 +97,10 @@ button.primary {
 }
 
 button.ghost {
-  background: #ffffff;
+  background: #dbeafe;
+  color: #0f172a;
+  border-color: #93c5fd;
+  font-weight: 600;
 }
 
 button:disabled {
@@ -146,9 +149,26 @@ button:disabled {
     border-color: #243244;
   }
 
-  button {
-    background: #111827;
+  select {
+    background: #0b1220;
     color: #e5eefb;
-    border-color: #243244;
+    border-color: #334155;
+  }
+
+  select option {
+    background: #0b1220;
+    color: #e5eefb;
+  }
+
+  button {
+    background: #1f2937;
+    color: #e5eefb;
+    border-color: #334155;
+  }
+
+  button.ghost {
+    background: #dbeafe;
+    color: #0f172a;
+    border-color: #93c5fd;
   }
 }

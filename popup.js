@@ -161,7 +161,6 @@ async function runAction(serviceId, text) {
 
     if (response?.status === "success") {
       setStatus("Готово", false);
-      window.close();
       return;
     }
 
@@ -176,18 +175,26 @@ async function runAction(serviceId, text) {
 async function handleSendClick() {
   const selection = sanitizeSelection(state.selectionText);
   const serviceId = serviceSelectElement.value;
+  let shouldClose = false;
 
-  if (!selection) {
+  try {
+    if (!selection) {
     setStatus("Сначала выдели текст на странице.", true);
     return;
   }
 
-  if (!serviceId) {
+    if (!serviceId) {
     setStatus("Нет доступных сервисов.", true);
     return;
   }
 
-  await runAction(serviceId, selection);
+    shouldClose = true;
+    await runAction(serviceId, selection);
+  } finally {
+    if (shouldClose) {
+      window.close();
+    }
+  }
 }
 
 settingsButtonElement.addEventListener("click", () => {
