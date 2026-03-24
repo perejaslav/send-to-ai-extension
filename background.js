@@ -12,7 +12,7 @@ import {
 } from "./services.js";
 import { buildYouTubePrompt, normalizeYouTubeUrl } from "./youtube.js";
 
-const ACTION_DEFAULT_TITLE = "Send to AI - открыть настройки";
+const ACTION_DEFAULT_TITLE = "Send to AI";
 const STATUS_CLEAR_DELAY_MS = 5000;
 
 function storageGet(keys) {
@@ -288,10 +288,6 @@ chrome.runtime.onStartup.addListener(() => {
   clearActionStatus();
 });
 
-chrome.action.onClicked.addListener(() => {
-  chrome.runtime.openOptionsPage();
-});
-
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "sync") {
     return;
@@ -360,4 +356,25 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 
   await runServiceAction(targetService, specialAction.transformText(info.selectionText));
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || message.type !== "runServiceAction") {
+    return false;
+  }
+
+  const service = SERVICES_BY_ID[message.serviceId];
+  if (!service || typeof message.text !== "string" || message.text.trim().length === 0) {
+    sendResponse({ status: "error" });
+    return false;
+  }
+
+  runServiceAction(service, message.text)
+    .then((result) => sendResponse(result))
+    .catch((error) => {
+      console.warn("Popup service action failed:", error.message);
+      sendResponse({ status: "error" });
+    });
+
+  return true;
 });

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Send to AI</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="popup">
+    <header class="header">
+      <div>
+        <h1>Send to AI</h1>
+        <p id="subtitle" class="subtitle">Загружаю текущее выделение...</p>
+      </div>
+      <button id="settingsButton" type="button" class="ghost">Настройки</button>
+    </header>
+
+    <section class="card">
+      <h2>Выделение</h2>
+      <div id="selectionPreview" class="selection-preview">Нет данных</div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>Быстрая отправка</h2>
+      </div>
+      <label class="field-label" for="serviceSelect">Сервис</label>
+      <select id="serviceSelect"></select>
+      <button id="sendButton" type="button" class="primary">Отправить</button>
+    </section>
+
+    <section class="card">
+      <h2>Специальные команды</h2>
+      <div id="specialActions" class="button-grid"></div>
+    </section>
+
+    <div id="status" class="status" aria-live="polite"></div>
+  </main>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

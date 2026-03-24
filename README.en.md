@@ -14,6 +14,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - Separate per-command toggles for special commands in the context menu
 - Unified extension icon for toolbar and context menu
 - Insertion result badge on the toolbar icon (`OK` / `ERR`)
+- Quick popup for sending selected text and triggering special commands
 
 ## Supported AI Services
 
@@ -108,6 +109,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - `contextMenus` - Context menu access
 - `tabs` - Tab query/focus/update
 - `scripting` - Script injection
+- `activeTab` - Quick access to the current tab selection from the popup
 - Exact host permissions only for the supported AI domains
 
 ## Project Structure
@@ -122,6 +124,9 @@ send-to-ai-extension/
 |- youtube.js
 |- insertion.js
 |- link-prompts.js
+|- popup.html
+|- popup.css
+|- popup.js
 |- options.html
 |- options.css
 |- options.js
@@ -144,6 +149,12 @@ send-to-ai-extension/
 - `npm run check` - run unit tests plus syntax checks for the extension modules
 
 ## Changelog
+
+### v2.9
+
+- Added a quick popup for sending selected text to AI services
+- Popup can trigger special commands and open settings
+- Clicking the toolbar icon now opens the popup instead of the options page
 
 ### v2.8
 
