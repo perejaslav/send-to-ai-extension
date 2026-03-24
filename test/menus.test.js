@@ -37,11 +37,37 @@ test("buildMenuDescriptors omits special actions when disabled in settings", () 
     serviceOrder: ["sendToChatGPT"],
     enabledServices: { sendToChatGPT: true },
     defaultServiceId: "sendToChatGPT",
-    showSpecialActions: false
+    showSpecialActions: false,
+    enabledSpecialActions: {
+      sendAndTranslateToQwen: true,
+      sendAndTranslateToChatGPT: true,
+      summarizeInChatGPT: true,
+      factCheckInChatGPT: true
+    }
   });
 
   const ids = descriptors.map((item) => item.id);
   assert.ok(!ids.includes("sendToAISeparator"));
   assert.ok(!ids.includes("summarizeInChatGPT"));
   assert.ok(!ids.includes("factCheckInChatGPT"));
+});
+
+test("buildMenuDescriptors respects individual special action toggles", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToChatGPT"],
+    enabledServices: { sendToChatGPT: true },
+    defaultServiceId: "sendToChatGPT",
+    showSpecialActions: true,
+    enabledSpecialActions: {
+      sendAndTranslateToQwen: false,
+      sendAndTranslateToChatGPT: false,
+      summarizeInChatGPT: false,
+      factCheckInChatGPT: true
+    }
+  });
+
+  const ids = descriptors.map((item) => item.id);
+  assert.ok(ids.includes("factCheckInChatGPT"));
+  assert.ok(!ids.includes("summarizeInChatGPT"));
+  assert.ok(!ids.includes("sendAndTranslateToChatGPT"));
 });

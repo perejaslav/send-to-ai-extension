@@ -11,7 +11,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - Dedicated command for any link: page summary in ChatGPT
 - Dedicated command for the current page: current page summary in ChatGPT
 - Configurable services list (order, enable/disable, default service)
-- Separate show/hide toggle for special commands in the context menu
+- Separate per-command toggles for special commands in the context menu
 - Unified extension icon for toolbar and context menu
 - Insertion result badge on the toolbar icon (`OK` / `ERR`)
 
@@ -87,7 +87,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 2. Reorder services with drag and drop
 3. Disable services you do not need
 4. Choose a default service for the quick action
-5. Optionally hide the special commands in the main AI menu
+5. Manage the special commands individually
 6. Click **Save**
 
 ### Toolbar Action
@@ -145,9 +145,10 @@ send-to-ai-extension/
 
 ## Changelog
 
-### v2.7
+### v2.8
 
 - Added a new special command for selected text: **"Провести фактчекинг в ChatGPT"**
+- Added individual toggles for each special command in settings
 
 ### v2.6
 

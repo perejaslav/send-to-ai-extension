@@ -1,7 +1,8 @@
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
-import { SERVICE_CONFIGS } from "./services.js";
+import { SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
 
 const servicesListElement = document.getElementById("servicesList");
+const specialActionsListElement = document.getElementById("specialActionsList");
 const defaultServiceSelectElement = document.getElementById("defaultServiceSelect");
 const saveButtonElement = document.getElementById("saveButton");
 const resetButtonElement = document.getElementById("resetButton");
@@ -14,7 +15,8 @@ const state = {
     serviceOrder: [],
     enabledServices: {},
     defaultServiceId: null,
-    showSpecialActions: true
+    showSpecialActions: true,
+    enabledSpecialActions: {}
   }
 };
 
@@ -39,7 +41,8 @@ function saveSettings() {
       serviceOrder: state.settings.serviceOrder,
       enabledServices: state.settings.enabledServices,
       defaultServiceId: state.settings.defaultServiceId,
-      showSpecialActions: state.settings.showSpecialActions !== false
+      showSpecialActions: state.settings.showSpecialActions !== false,
+      enabledSpecialActions: state.settings.enabledSpecialActions
     }, () => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
@@ -176,6 +179,33 @@ function renderServicesList() {
   });
 }
 
+function renderSpecialActionsList() {
+  specialActionsListElement.textContent = "";
+
+  for (const action of SPECIAL_ACTIONS) {
+    const row = document.createElement("label");
+    row.className = "special-action-row";
+    if (!state.settings.showSpecialActions) {
+      row.classList.add("is-disabled");
+    }
+
+    const title = document.createElement("span");
+    title.className = "special-action-title";
+    title.textContent = action.title;
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = state.settings.enabledSpecialActions[action.id] !== false;
+    checkbox.disabled = !state.settings.showSpecialActions;
+    checkbox.addEventListener("change", () => {
+      state.settings.enabledSpecialActions[action.id] = checkbox.checked;
+    });
+
+    row.append(title, checkbox);
+    specialActionsListElement.append(row);
+  }
+}
+
 function renderDefaultSelect() {
   defaultServiceSelectElement.textContent = "";
 
@@ -198,6 +228,7 @@ function renderDefaultSelect() {
 
 function render() {
   renderServicesList();
+  renderSpecialActionsList();
   renderDefaultSelect();
   showSpecialActionsElement.checked = state.settings.showSpecialActions !== false;
 }
@@ -239,6 +270,7 @@ defaultServiceSelectElement.addEventListener("change", () => {
 
 showSpecialActionsElement.addEventListener("change", () => {
   state.settings.showSpecialActions = showSpecialActionsElement.checked;
+  renderSpecialActionsList();
 });
 
 saveButtonElement.addEventListener("click", handleSave);

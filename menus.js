@@ -18,6 +18,7 @@ function isServiceEnabled(settings, serviceId) {
 }
 
 export function buildMenuDescriptors(settings) {
+  const enabledSpecialActions = settings.enabledSpecialActions || {};
   const descriptors = [
     {
       id: ROOT_MENU_ID,
@@ -54,7 +55,9 @@ export function buildMenuDescriptors(settings) {
   }
 
   if (settings.showSpecialActions) {
-    const visibleSpecialActions = SPECIAL_ACTIONS.filter((action) => isServiceEnabled(settings, action.serviceId));
+    const visibleSpecialActions = SPECIAL_ACTIONS.filter((action) =>
+      isServiceEnabled(settings, action.serviceId) && enabledSpecialActions[action.id] !== false
+    );
 
     if (visibleSpecialActions.length > 0) {
       descriptors.push({

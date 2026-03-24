@@ -9,7 +9,7 @@
 <body>
   <main class="container">
     <h1>Настройки Send to AI</h1>
-    <p class="lead">Включай или отключай сервисы, меняй порядок и выбери сервис по умолчанию для быстрого действия.</p>
+    <p class="lead">Включай или отключай сервисы, меняй порядок, управляй специальными командами и выбери сервис по умолчанию для быстрого действия.</p>
 
     <section class="panel">
       <h2>Сервисы в контекстном меню</h2>
@@ -23,11 +23,12 @@
     </section>
 
     <section class="panel">
-      <h2>Показывать в меню</h2>
+      <h2>Специальные команды</h2>
       <label class="service-toggle" for="showSpecialActions">
         <input id="showSpecialActions" type="checkbox">
         <span>Специальные команды</span>
       </label>
+      <div id="specialActionsList" class="special-actions-list"></div>
     </section>
 
     <div class="actions">

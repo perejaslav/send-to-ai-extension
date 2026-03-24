@@ -140,6 +140,32 @@ button:disabled {
   height: 16px;
 }
 
+.special-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.special-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fbfcff;
+}
+
+.special-action-row.is-disabled {
+  opacity: 0.6;
+}
+
+.special-action-title {
+  font-weight: 500;
+}
+
 select {
   width: 100%;
   max-width: 360px;
