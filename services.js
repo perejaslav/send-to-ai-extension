@@ -222,6 +222,13 @@ export const SPECIAL_ACTIONS = [
     serviceId: "sendToChatGPT",
     transformText: (selectedText) =>
       "Без вступительного текста. Сделай краткое саммари --- \n\n" + selectedText
+  },
+  {
+    id: "factCheckInChatGPT",
+    title: "Провести фактчекинг в ChatGPT",
+    serviceId: "sendToChatGPT",
+    transformText: (selectedText) =>
+      "Проведи фактчекинг утверждений только из текста ниже. Верни результат в таблице: Утверждение | Статус (верно/частично верно/неверно/недостаточно данных) | Краткое обоснование | Что уточнить. Не выдумывай источники и явно помечай случаи, где данных недостаточно.\n\n" + selectedText
   }
 ];
 

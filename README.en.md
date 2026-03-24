@@ -37,6 +37,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - **Отправить и перевести в Qwen** - Translates selected text to Russian before sending
 - **Отправить и перевести в ChatGPT** - Translates selected text to Russian before sending
 - **Сделать саммари в ChatGPT** - Creates a concise summary of selected text
+- **Провести фактчекинг в ChatGPT** - Fact-checks claims in selected text with reliability labels
 - **Открыть в Gemini** - Opens a YouTube link in Gemini with a summary prompt (link context menu)
 - **Сделать саммари страницы в ChatGPT** - Sends any link to ChatGPT with a detailed page summary request
 - **Сделать саммари текущей страницы в ChatGPT** - Sends the current page URL to ChatGPT with a detailed summary request
@@ -143,6 +144,10 @@ send-to-ai-extension/
 - `npm run check` - run unit tests plus syntax checks for the extension modules
 
 ## Changelog
+
+### v2.7
+
+- Added a new special command for selected text: **"Провести фактчекинг в ChatGPT"**
 
 ### v2.6
 
