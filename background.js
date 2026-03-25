@@ -1,11 +1,10 @@
 import { insertTextIntoPage } from "./insertion.js";
-import { buildCurrentPageSummaryPrompt, buildLinkSummaryPrompt } from "./link-prompts.js";
+import { buildPageOrLinkPrompt } from "./context-prompts.js";
 import { buildMenuDescriptors } from "./menus.js";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
 import {
-  LINK_SUMMARY_MENU_ID,
-  PAGE_SUMMARY_MENU_ID,
   QUICK_DEFAULT_MENU_ID,
+  CONTEXT_ACTIONS_BY_ID,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS_BY_ID,
   YOUTUBE_MENU_ID
@@ -256,26 +255,29 @@ async function handleYouTubeLinkAction(linkUrl) {
   await runServiceAction(geminiService, textToInsert);
 }
 
-async function handleGenericLinkSummaryAction(linkUrl) {
-  if (!linkUrl) {
+async function handleContextAction(action, info, tab) {
+  const sourceUrl = action.contextType === "page"
+    ? info.pageUrl || tab?.url || ""
+    : info.linkUrl || tab?.url || "";
+
+  if (!sourceUrl || !/^https?:\/\//i.test(sourceUrl)) {
     showActionStatus({ status: "unsupported_link" });
     return;
   }
 
-  const chatGptService = SERVICES_BY_ID.sendToChatGPT;
-  const textToInsert = buildLinkSummaryPrompt(linkUrl);
-  await runServiceAction(chatGptService, textToInsert);
-}
-
-async function handleCurrentPageSummaryAction(pageUrl) {
-  if (!pageUrl || !/^https?:\/\//i.test(pageUrl)) {
-    showActionStatus({ status: "unsupported_link" });
+  const targetService = SERVICES_BY_ID[action.serviceId];
+  if (!targetService) {
+    showActionStatus({ status: "error" });
     return;
   }
 
-  const chatGptService = SERVICES_BY_ID.sendToChatGPT;
-  const textToInsert = buildCurrentPageSummaryPrompt(pageUrl);
-  await runServiceAction(chatGptService, textToInsert);
+  const textToInsert = buildPageOrLinkPrompt(action.contextType, action.actionType, sourceUrl, tab?.title || "");
+  if (!textToInsert) {
+    showActionStatus({ status: "error" });
+    return;
+  }
+
+  await runServiceAction(targetService, textToInsert);
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -300,13 +302,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === PAGE_SUMMARY_MENU_ID) {
-    await handleCurrentPageSummaryAction(info.pageUrl || tab?.url || "");
-    return;
-  }
-
-  if (info.menuItemId === LINK_SUMMARY_MENU_ID) {
-    await handleGenericLinkSummaryAction(info.linkUrl || "");
+  const contextAction = CONTEXT_ACTIONS_BY_ID[info.menuItemId];
+  if (contextAction) {
+    await handleContextAction(contextAction, info, tab);
     return;
   }
 

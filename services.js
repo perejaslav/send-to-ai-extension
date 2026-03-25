@@ -1,13 +1,11 @@
 export const ROOT_MENU_ID = "sendToAI";
 export const YOUTUBE_MENU_ID = "openYouTubeInGemini";
-export const LINK_SUMMARY_MENU_ID = "summarizeLinkInChatGPT";
-export const PAGE_SUMMARY_MENU_ID = "summarizeCurrentPageInChatGPT";
+export const CONTEXT_ACTIONS_MENU_ID = "pageAndLinkActions";
 export const QUICK_DEFAULT_MENU_ID = "sendToAIDefault";
 
 export const ROOT_MENU_TITLE = "Отправить в AI";
 export const YOUTUBE_MENU_TITLE = "Открыть в Gemini";
-export const LINK_SUMMARY_MENU_TITLE = "Сделать саммари страницы в ChatGPT";
-export const PAGE_SUMMARY_MENU_TITLE = "Сделать саммари текущей страницы в ChatGPT";
+export const CONTEXT_ACTIONS_MENU_TITLE = "Страницы и ссылки";
 
 export const SERVICE_CONFIGS = [
   {
@@ -232,6 +230,66 @@ export const SPECIAL_ACTIONS = [
   }
 ];
 
+export const CONTEXT_ACTIONS = [
+  {
+    id: "pageSummaryInChatGPT",
+    title: "Саммари страницы в ChatGPT",
+    contextType: "page",
+    actionType: "summary",
+    serviceId: "sendToChatGPT"
+  },
+  {
+    id: "pageFactCheckInChatGPT",
+    title: "Фактчекинг страницы в ChatGPT",
+    contextType: "page",
+    actionType: "factcheck",
+    serviceId: "sendToChatGPT"
+  },
+  {
+    id: "pageTranslateInChatGPT",
+    title: "Перевести страницу в ChatGPT",
+    contextType: "page",
+    actionType: "translate",
+    serviceId: "sendToChatGPT"
+  },
+  {
+    id: "pageKeyPointsInChatGPT",
+    title: "Тезисы страницы в ChatGPT",
+    contextType: "page",
+    actionType: "key_points",
+    serviceId: "sendToChatGPT"
+  },
+  {
+    id: "linkSummaryInChatGPT",
+    title: "Саммари ссылки в ChatGPT",
+    contextType: "link",
+    actionType: "summary",
+    serviceId: "sendToChatGPT"
+  },
+  {
+    id: "linkFactCheckInChatGPT",
+    title: "Фактчекинг ссылки в ChatGPT",
+    contextType: "link",
+    actionType: "factcheck",
+    serviceId: "sendToChatGPT"
+  },
+  {
+    id: "linkTranslateInChatGPT",
+    title: "Перевести ссылку в ChatGPT",
+    contextType: "link",
+    actionType: "translate",
+    serviceId: "sendToChatGPT"
+  },
+  {
+    id: "linkKeyPointsInChatGPT",
+    title: "Тезисы ссылки в ChatGPT",
+    contextType: "link",
+    actionType: "key_points",
+    serviceId: "sendToChatGPT"
+  }
+];
+
 export const SERVICES_BY_ID = Object.fromEntries(SERVICE_CONFIGS.map((service) => [service.id, service]));
 export const SPECIAL_ACTIONS_BY_ID = Object.fromEntries(SPECIAL_ACTIONS.map((action) => [action.id, action]));
+export const CONTEXT_ACTIONS_BY_ID = Object.fromEntries(CONTEXT_ACTIONS.map((action) => [action.id, action]));
 export const ALL_SERVICE_IDS = SERVICE_CONFIGS.map((service) => service.id);

@@ -1,8 +1,7 @@
 import {
-  LINK_SUMMARY_MENU_ID,
-  LINK_SUMMARY_MENU_TITLE,
-  PAGE_SUMMARY_MENU_ID,
-  PAGE_SUMMARY_MENU_TITLE,
+  CONTEXT_ACTIONS,
+  CONTEXT_ACTIONS_MENU_ID,
+  CONTEXT_ACTIONS_MENU_TITLE,
   QUICK_DEFAULT_MENU_ID,
   ROOT_MENU_ID,
   ROOT_MENU_TITLE,
@@ -79,16 +78,19 @@ export function buildMenuDescriptors(settings) {
   }
 
   descriptors.push({
-    id: PAGE_SUMMARY_MENU_ID,
-    title: PAGE_SUMMARY_MENU_TITLE,
-    contexts: ["page"]
+    id: CONTEXT_ACTIONS_MENU_ID,
+    title: CONTEXT_ACTIONS_MENU_TITLE,
+    contexts: ["page", "link"]
   });
 
-  descriptors.push({
-    id: LINK_SUMMARY_MENU_ID,
-    title: LINK_SUMMARY_MENU_TITLE,
-    contexts: ["link"]
-  });
+  for (const action of CONTEXT_ACTIONS) {
+    descriptors.push({
+      id: action.id,
+      parentId: CONTEXT_ACTIONS_MENU_ID,
+      title: action.title,
+      contexts: [action.contextType]
+    });
+  }
 
   descriptors.push({
     id: YOUTUBE_MENU_ID,

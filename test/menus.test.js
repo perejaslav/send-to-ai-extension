@@ -14,8 +14,15 @@ test("buildMenuDescriptors creates quick default and flat special actions", () =
   const ids = descriptors.map((item) => item.id);
   assert.ok(ids.includes("sendToAI"));
   assert.ok(ids.includes("sendToAIDefault"));
-  assert.ok(ids.includes("summarizeCurrentPageInChatGPT"));
-  assert.ok(ids.includes("summarizeLinkInChatGPT"));
+  assert.ok(ids.includes("pageAndLinkActions"));
+  assert.ok(ids.includes("pageSummaryInChatGPT"));
+  assert.ok(ids.includes("pageFactCheckInChatGPT"));
+  assert.ok(ids.includes("pageTranslateInChatGPT"));
+  assert.ok(ids.includes("pageKeyPointsInChatGPT"));
+  assert.ok(ids.includes("linkSummaryInChatGPT"));
+  assert.ok(ids.includes("linkFactCheckInChatGPT"));
+  assert.ok(ids.includes("linkTranslateInChatGPT"));
+  assert.ok(ids.includes("linkKeyPointsInChatGPT"));
   assert.ok(ids.includes("openYouTubeInGemini"));
   assert.ok(ids.includes("sendToAISeparator"));
   assert.ok(ids.includes("sendAndTranslateToQwen"));
@@ -25,11 +32,16 @@ test("buildMenuDescriptors creates quick default and flat special actions", () =
   const qwenAction = descriptors.find((item) => item.id === "sendAndTranslateToQwen");
   assert.equal(qwenAction.parentId, "sendToAI");
 
-  const genericLinkAction = descriptors.find((item) => item.id === "summarizeLinkInChatGPT");
-  assert.deepEqual(genericLinkAction.contexts, ["link"]);
+  const contextMenu = descriptors.find((item) => item.id === "pageAndLinkActions");
+  assert.deepEqual(contextMenu.contexts, ["page", "link"]);
 
-  const currentPageAction = descriptors.find((item) => item.id === "summarizeCurrentPageInChatGPT");
-  assert.deepEqual(currentPageAction.contexts, ["page"]);
+  const pageSummaryAction = descriptors.find((item) => item.id === "pageSummaryInChatGPT");
+  assert.equal(pageSummaryAction.parentId, "pageAndLinkActions");
+  assert.deepEqual(pageSummaryAction.contexts, ["page"]);
+
+  const linkSummaryAction = descriptors.find((item) => item.id === "linkSummaryInChatGPT");
+  assert.equal(linkSummaryAction.parentId, "pageAndLinkActions");
+  assert.deepEqual(linkSummaryAction.contexts, ["link"]);
 });
 
 test("buildMenuDescriptors omits special actions when disabled in settings", () => {

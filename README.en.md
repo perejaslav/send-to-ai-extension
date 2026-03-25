@@ -8,8 +8,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - Reuse an already opened AI tab (focus + insert), or open a new popup window
 - Auto-insert selected text into chat input
 - YouTube link integration for Gemini with URL normalization
-- Dedicated command for any link: page summary in ChatGPT
-- Dedicated command for the current page: current page summary in ChatGPT
+- Unified page/link command block for summary, fact-checking, translation, and key points
 - Configurable services list (order, enable/disable, default service)
 - Separate per-command toggles for special commands in the context menu
 - Unified extension icon for toolbar and context menu
@@ -40,8 +39,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - **Сделать саммари в ChatGPT** - Creates a concise summary of selected text
 - **Провести фактчекинг в ChatGPT** - Fact-checks claims in selected text with reliability labels
 - **Открыть в Gemini** - Opens a YouTube link in Gemini with a summary prompt (link context menu)
-- **Сделать саммари страницы в ChatGPT** - Sends any link to ChatGPT with a detailed page summary request
-- **Сделать саммари текущей страницы в ChatGPT** - Sends the current page URL to ChatGPT with a detailed summary request
+- **Страницы и ссылки** - Unified submenu for summary, fact-checking, translation, and key points by page or link
 - **Send to <service> (default)** - Quick action for the service selected in extension settings
 
 ## Installation
@@ -124,6 +122,7 @@ send-to-ai-extension/
 |- youtube.js
 |- insertion.js
 |- link-prompts.js
+|- context-prompts.js
 |- popup.html
 |- popup.css
 |- popup.js
@@ -150,8 +149,11 @@ send-to-ai-extension/
 
 ## Changelog
 
-### v2.9
+### v3.0
 
+- Added a unified page/link command block for summary, fact-checking, translation, and key points
+- Moved page and link scenarios into one `Страницы и ссылки` submenu
+- Extracted prompt building for page/link actions into a shared builder
 - Added a quick popup for sending selected text to AI services
 - Popup can trigger special commands and open settings
 - Clicking the toolbar icon now opens the popup instead of the options page
