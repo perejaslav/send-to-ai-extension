@@ -7,7 +7,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - Right-click selected text and send it to an AI assistant in one click
 - Reuse an already opened AI tab (focus + insert), or open a new popup window
 - Auto-insert selected text into chat input
-- YouTube link integration for Gemini with URL normalization
+- YouTube link integration for Gemini with a detailed extraction prompt and URL normalization
 
 ## Supported AI Services
 
@@ -31,7 +31,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - **Send and translate to Qwen** - Translates selected text to Russian before sending
 - **Send and translate to ChatGPT** - Translates selected text to Russian before sending
 - **Summarize in ChatGPT** - Creates a concise summary of selected text
-- **Open in Gemini** - Opens a YouTube link in Gemini with a summary prompt (link context menu)
+- **Open in Gemini** - Opens a YouTube link in Gemini with a detailed extraction prompt that asks for facts, figures, dates, names, causal links, and practical recommendations (link context menu)
 
 ## Installation
 
@@ -57,7 +57,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 
 1. On any webpage, right-click a YouTube link (`youtube.com` or `youtu.be`)
 2. Choose **"Open in Gemini"** (separate link-context menu item)
-3. Gemini opens with a normalized YouTube URL and summary prompt
+3. Gemini opens with a normalized YouTube URL and a prompt that asks for all important information from the video
 
 ## Technical Details
 
@@ -88,6 +88,11 @@ send-to-ai-extension/
 ```
 
 ## Changelog
+
+### v3.1
+
+- Expanded the YouTube prompt for Gemini so it now asks for facts, figures, statistics, dates, names, titles, causal links, practical recommendations, examples, and caveats
+- Synced the YouTube workflow description in the docs with the new prompt
 
 ### v2.2
 
