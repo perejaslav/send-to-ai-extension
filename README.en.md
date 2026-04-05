@@ -7,7 +7,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - Right-click selected text and send it to an AI assistant in one click
 - Reuse an already opened AI tab (focus + insert), or open a new popup window
 - Auto-insert selected text into chat input
-- YouTube link integration for Gemini with URL normalization
+- YouTube link integration for Gemini with a detailed extraction prompt and URL normalization
 - Unified page/link command block for summary, fact-checking, translation, and key points
 - Configurable services list (order, enable/disable, default service)
 - Separate per-command toggles for special commands in the context menu
@@ -38,7 +38,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - **Отправить и перевести в ChatGPT** - Translates selected text to Russian before sending
 - **Сделать саммари в ChatGPT** - Creates a concise summary of selected text
 - **Провести фактчекинг в ChatGPT** - Fact-checks claims in selected text with reliability labels
-- **Открыть в Gemini** - Opens a YouTube link in Gemini with a summary prompt (link context menu)
+- **Открыть в Gemini** - Opens a YouTube link in Gemini with a detailed extraction prompt (link context menu)
 - **Страницы и ссылки** - Unified submenu for summary, fact-checking, translation, and key points by page or link
 - **Send to <service> (default)** - Quick action for the service selected in extension settings
 
@@ -66,7 +66,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 
 1. On any webpage, right-click a YouTube link (`youtube.com` or `youtu.be`)
 2. Choose **"Открыть в Gemini"** (separate link-context menu item)
-3. Gemini opens with a normalized YouTube URL and summary prompt
+3. Gemini opens with a normalized YouTube URL and a prompt that asks for all key facts, figures, dates, names, causal links, and practical recommendations
 
 ### Any Link Summary
 
@@ -148,6 +148,12 @@ send-to-ai-extension/
 - `npm run check` - run unit tests plus syntax checks for the extension modules
 
 ## Changelog
+
+### v3.1
+
+- Expanded the YouTube prompt for Gemini so it now asks for all facts, figures, statistics, dates, names, titles, causal links, practical recommendations, examples, and caveats
+- Updated the YouTube prompt regression test for the new detailed wording
+- Synced the YouTube workflow description in the docs with the new prompt
 
 ### v3.0
 
