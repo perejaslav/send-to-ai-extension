@@ -1,0 +1,174 @@
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  width: 380px;
+  background: #f5f7fb;
+  color: #1f2a37;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.popup {
+  padding: 12px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.selection-preview {
+  min-height: 64px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #cdd5df;
+  background: #fbfcff;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #cdd5df;
+  border-radius: 8px;
+  background: #fff;
+  margin-bottom: 10px;
+}
+
+button {
+  border: 1px solid #cdd5df;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #1f2a37;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+button.primary {
+  width: 100%;
+  background: #1d4ed8;
+  color: #ffffff;
+  border-color: #1d4ed8;
+  font-weight: 600;
+}
+
+button.ghost {
+  background: #dbeafe;
+  color: #0f172a;
+  border-color: #93c5fd;
+  font-weight: 600;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.button-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.button-grid button {
+  width: 100%;
+}
+
+.status {
+  min-height: 18px;
+  font-size: 12px;
+  color: #166534;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    background: #0f172a;
+    color: #e5eefb;
+  }
+
+  .card {
+    background: #111827;
+    border-color: #243244;
+  }
+
+  .subtitle,
+  .field-label {
+    color: #9aa7b8;
+  }
+
+  .selection-preview {
+    background: #0b1220;
+    border-color: #243244;
+  }
+
+  select {
+    background: #0b1220;
+    color: #e5eefb;
+    border-color: #334155;
+  }
+
+  select option {
+    background: #0b1220;
+    color: #e5eefb;
+  }
+
+  button {
+    background: #1f2937;
+    color: #e5eefb;
+    border-color: #334155;
+  }
+
+  button.ghost {
+    background: #dbeafe;
+    color: #0f172a;
+    border-color: #93c5fd;
+  }
+}

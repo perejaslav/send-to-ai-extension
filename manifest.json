@@ -6,36 +6,38 @@
   "permissions": [
     "contextMenus",
     "tabs",
-    "scripting"
+    "scripting",
+    "activeTab",
+    "storage"
   ],
   "host_permissions": [
     "https://chat.qwen.ai/*",
-    "https://*.qwen.ai/*",
     "https://ernie.baidu.com/*",
-    "https://*.baidu.com/*",
     "https://agent.minimax.io/*",
-    "https://*.minimax.io/*",
     "https://stepfun.ai/*",
-    "https://*.stepfun.ai/*",
     "https://grok.com/*",
-    "https://*.grok.com/*",
     "https://chat.z.ai/*",
-    "https://*.z.ai/*",
     "https://chat.deepseek.com/*",
-    "https://*.deepseek.com/*",
-    "https://kimi.moonshot.cn/*",
-    "https://*.kimi.com/*",
     "https://www.kimi.com/*",
     "https://chatgpt.com/*",
-    "https://*.chatgpt.com/*",
     "https://gemini.google.com/*",
-    "https://*.google.com/*",
-    "https://claude.ai/*",
-    "https://*.claude.ai/*"
+    "https://aistudio.google.com/*",
+    "https://claude.ai/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
+  "action": {
+    "default_title": "Send to AI",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "options_page": "options.html",
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
