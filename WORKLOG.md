@@ -150,3 +150,4 @@
 - Обновлены тесты в `test/youtube.test.js` под новый текст промпта
 - Обновлены описания YouTube-сценария и changelog в `README.md` и `README.en.md`
 - Все проверки (`npm run check`) пройдены успешно
+- Обновлена версия расширения до `3.2` в `manifest.json` и до `3.2.0` в `package.json` (синхронизация с уже подготовленным changelog v3.2 в README)
