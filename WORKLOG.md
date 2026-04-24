@@ -143,3 +143,10 @@
 - Started the prompt replacement work for YouTube links and prepared the README/test updates to match the new detailed extraction prompt
 - Bumped the extension version to `3.1` / `3.1.0` and documented the `v3.1` changes in both README files
 - Applied the v3.1 release update in the current repo state: expanded the YouTube prompt in `background.js`, raised the manifest version to `3.1`, and synced the README changelogs
+
+## 2026-04-25
+
+- Заменён YouTube-prompt для Gemini в `youtube.js`: вместо извлечения ключевой информации из ролика теперь отправляется подробный prompt для обработки транскрипции видеоролика в полноценную литературную статью на русском языке
+- Обновлены тесты в `test/youtube.test.js` под новый текст промпта
+- Обновлены описания YouTube-сценария и changelog в `README.md` и `README.en.md`
+- Все проверки (`npm run check`) пройдены успешно

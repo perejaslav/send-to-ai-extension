@@ -38,7 +38,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - **Отправить и перевести в ChatGPT** - Translates selected text to Russian before sending
 - **Сделать саммари в ChatGPT** - Creates a concise summary of selected text
 - **Провести фактчекинг в ChatGPT** - Fact-checks claims in selected text with reliability labels
-- **Открыть в Gemini** - Opens a YouTube link in Gemini with a detailed extraction prompt (link context menu)
+- **Открыть в Gemini** - Opens a YouTube link in Gemini with a prompt to process the video transcript into a full literary article in Russian
 - **Страницы и ссылки** - Unified submenu for summary, fact-checking, translation, and key points by page or link
 - **Send to <service> (default)** - Quick action for the service selected in extension settings
 
@@ -66,7 +66,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 
 1. On any webpage, right-click a YouTube link (`youtube.com` or `youtu.be`)
 2. Choose **"Открыть в Gemini"** (separate link-context menu item)
-3. Gemini opens with a normalized YouTube URL and a prompt that asks for all key facts, figures, dates, names, causal links, and practical recommendations
+3. Gemini opens with a normalized YouTube URL and a prompt that asks to process the video transcript into a full literary article in Russian, preserving all facts, arguments, and details
 
 ### Any Link Summary
 
@@ -148,6 +148,11 @@ send-to-ai-extension/
 - `npm run check` - run unit tests plus syntax checks for the extension modules
 
 ## Changelog
+
+### v3.2
+
+- Replaced the YouTube prompt for Gemini: it now asks to process the video transcript into a full literary article in Russian instead of extracting key information
+- Updated the YouTube prompt regression test for the new wording
 
 ### v3.1
 

@@ -21,13 +21,13 @@ test("normalizeYouTubeUrl rejects non-youtube hosts", () => {
   assert.equal(normalizeYouTubeUrl("https://example.com/watch?v=abc123"), null);
 });
 
-test("buildYouTubePrompt embeds the normalized url", () => {
+test("buildYouTubePrompt embeds the normalized url and transcript article prompt", () => {
   const prompt = buildYouTubePrompt("https://www.youtube.com/watch?v=abc123");
 
   assert.match(prompt, /https:\/\/www\.youtube\.com\/watch\?v=abc123/);
-  assert.match(prompt, /извлечь всю важную информацию/);
-  assert.match(prompt, /Все факты, цифры, статистику, даты, имена/);
-  assert.match(prompt, /Причинно-следственные связи и логику аргументации автора/);
-  assert.match(prompt, /Практические действия, задачи, рекомендации и решения/);
-  assert.match(prompt, /Противоречия, оговорки или нюансы/);
+  assert.match(prompt, /профессиональный редактор, литературный обработчик/);
+  assert.match(prompt, /Текст нельзя сокращать по смыслу/);
+  assert.match(prompt, /превратить её в полноценную, грамотную, удобную для чтения статью/);
+  assert.match(prompt, /Не превращай текст в краткое саммари/);
+  assert.match(prompt, /Самопроверка перед ответом/);
 });
