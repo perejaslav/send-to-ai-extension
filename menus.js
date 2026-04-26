@@ -8,8 +8,8 @@ import {
   SERVICE_CONFIGS,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS,
-  YOUTUBE_MENU_ID,
-  YOUTUBE_MENU_TITLE
+  YOUTUBE_MENU_IDS,
+  YOUTUBE_MENU_TITLES
 } from "./services.js";
 
 function isServiceEnabled(settings, serviceId) {
@@ -92,16 +92,18 @@ export function buildMenuDescriptors(settings) {
     });
   }
 
-  descriptors.push({
-    id: YOUTUBE_MENU_ID,
-    title: YOUTUBE_MENU_TITLE,
-    contexts: ["link"],
-    targetUrlPatterns: [
-      "*://*.youtube.com/*",
-      "*://youtube.com/*",
-      "*://youtu.be/*"
-    ]
-  });
+  for (const [id, title] of Object.entries(YOUTUBE_MENU_TITLES)) {
+    descriptors.push({
+      id: YOUTUBE_MENU_IDS[id],
+      title,
+      contexts: ["link"],
+      targetUrlPatterns: [
+        "*://*.youtube.com/*",
+        "*://youtube.com/*",
+        "*://youtu.be/*"
+      ]
+    });
+  }
 
   return descriptors;
 }

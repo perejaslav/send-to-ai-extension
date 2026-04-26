@@ -7,9 +7,9 @@ import {
   CONTEXT_ACTIONS_BY_ID,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS_BY_ID,
-  YOUTUBE_MENU_ID
+  YOUTUBE_MENU_IDS
 } from "./services.js";
-import { buildYouTubePrompt, normalizeYouTubeUrl } from "./youtube.js";
+import { buildYouTubePrompt, buildYouTubeSummaryPrompt, normalizeYouTubeUrl } from "./youtube.js";
 
 const ACTION_DEFAULT_TITLE = "Send to AI";
 const STATUS_CLEAR_DELAY_MS = 5000;
@@ -243,7 +243,7 @@ async function runServiceAction(service, text) {
   }
 }
 
-async function handleYouTubeLinkAction(linkUrl) {
+async function handleYouTubeLinkAction(linkUrl, variant) {
   const cleanUrl = normalizeYouTubeUrl(linkUrl);
   if (!cleanUrl) {
     showActionStatus({ status: "unsupported_link" });
@@ -251,7 +251,9 @@ async function handleYouTubeLinkAction(linkUrl) {
   }
 
   const geminiService = SERVICES_BY_ID.sendToGemini;
-  const textToInsert = buildYouTubePrompt(cleanUrl);
+  const textToInsert = variant === "summary"
+    ? buildYouTubeSummaryPrompt(cleanUrl)
+    : buildYouTubePrompt(cleanUrl);
   await runServiceAction(geminiService, textToInsert);
 }
 
@@ -308,8 +310,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
 
-  if (info.menuItemId === YOUTUBE_MENU_ID) {
-    await handleYouTubeLinkAction(info.linkUrl || "");
+  if (info.menuItemId === YOUTUBE_MENU_IDS.article) {
+    await handleYouTubeLinkAction(info.linkUrl || "", "article");
+    return;
+  }
+
+  if (info.menuItemId === YOUTUBE_MENU_IDS.summary) {
+    await handleYouTubeLinkAction(info.linkUrl || "", "summary");
     return;
   }
 

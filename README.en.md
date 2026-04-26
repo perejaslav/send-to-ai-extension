@@ -38,7 +38,8 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - **Отправить и перевести в ChatGPT** - Translates selected text to Russian before sending
 - **Сделать саммари в ChatGPT** - Creates a concise summary of selected text
 - **Провести фактчекинг в ChatGPT** - Fact-checks claims in selected text with reliability labels
-- **Открыть в Gemini** - Opens a YouTube link in Gemini with a prompt to process the video transcript into a full literary article in Russian
+- **YouTube transcript article in Gemini** - Opens a YouTube link in Gemini with a prompt to process the video transcript into a full literary article in Russian
+- **YouTube video summary in Gemini** - Opens a YouTube link in Gemini with a prompt to summarize all key facts from the video
 - **Страницы и ссылки** - Unified submenu for summary, fact-checking, translation, and key points by page or link
 - **Send to <service> (default)** - Quick action for the service selected in extension settings
 
@@ -65,8 +66,8 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 ### YouTube Integration
 
 1. On any webpage, right-click a YouTube link (`youtube.com` or `youtu.be`)
-2. Choose **"Открыть в Gemini"** (separate link-context menu item)
-3. Gemini opens with a normalized YouTube URL and a prompt that asks to process the video transcript into a full literary article in Russian, preserving all facts, arguments, and details
+2. Choose **"YouTube transcript article in Gemini"** or **"YouTube video summary in Gemini"** (separate link-context menu items)
+3. Gemini opens with a normalized YouTube URL and a prompt for the selected scenario: either a full literary article from the transcript or a short summary of the main facts
 
 ### Any Link Summary
 
@@ -148,6 +149,11 @@ send-to-ai-extension/
 - `npm run check` - run unit tests plus syntax checks for the extension modules
 
 ## Changelog
+
+### v3.3
+
+- Added two separate YouTube menu items in Gemini: one for a detailed transcript article and one for a short summary of the main facts
+- Updated the YouTube prompt tests for both scenarios
 
 ### v3.2
 

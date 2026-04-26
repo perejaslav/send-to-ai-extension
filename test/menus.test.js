@@ -23,7 +23,8 @@ test("buildMenuDescriptors creates quick default and flat special actions", () =
   assert.ok(ids.includes("linkFactCheckInChatGPT"));
   assert.ok(ids.includes("linkTranslateInChatGPT"));
   assert.ok(ids.includes("linkKeyPointsInChatGPT"));
-  assert.ok(ids.includes("openYouTubeInGemini"));
+  assert.ok(ids.includes("openYouTubeArticleInGemini"));
+  assert.ok(ids.includes("openYouTubeSummaryInGemini"));
   assert.ok(ids.includes("sendToAISeparator"));
   assert.ok(ids.includes("sendAndTranslateToQwen"));
   assert.ok(ids.includes("summarizeInChatGPT"));

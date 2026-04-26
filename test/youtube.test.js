@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildYouTubePrompt, normalizeYouTubeUrl } from "../youtube.js";
+import { buildYouTubePrompt, buildYouTubeSummaryPrompt, normalizeYouTubeUrl } from "../youtube.js";
 
 test("normalizeYouTubeUrl normalizes short urls", () => {
   assert.equal(
@@ -30,4 +30,14 @@ test("buildYouTubePrompt embeds the normalized url and transcript article prompt
   assert.match(prompt, /превратить её в полноценную, грамотную, удобную для чтения статью/);
   assert.match(prompt, /Не превращай текст в краткое саммари/);
   assert.match(prompt, /Самопроверка перед ответом/);
+});
+
+test("buildYouTubeSummaryPrompt embeds the normalized url and summary prompt", () => {
+  const prompt = buildYouTubeSummaryPrompt("https://www.youtube.com/watch?v=abc123");
+
+  assert.match(prompt, /https:\/\/www\.youtube\.com\/watch\?v=abc123/);
+  assert.match(prompt, /краткое резюме видеоролика/);
+  assert.match(prompt, /Кратко перечисли все основные факты/);
+  assert.match(prompt, /Не превращай резюме в статью/);
+  assert.match(prompt, /5-10 кратких абзацев или маркированных пунктов/);
 });
