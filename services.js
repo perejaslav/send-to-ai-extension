@@ -106,13 +106,22 @@ export const SERVICE_CONFIGS = [
     newUrl: "https://chat.deepseek.com/",
     profile: {
       selectors: [
+        '[data-slate-editor="true"]',
+        'div[contenteditable="plaintext-only"]',
+        'div[contenteditable="true"][role="textbox"]',
         'textarea[placeholder*="Ask"]',
         'textarea[placeholder*="Type"]',
         "textarea",
         'div[contenteditable="true"]',
         '[aria-label*="prompt"]',
-        '[aria-label*="message"]'
-      ]
+        '[aria-label*="message"]',
+        '[class*="chat-input"]',
+        '[class*="input"]'
+      ],
+      usePasteFirst: true,
+      timeoutMs: 20000,
+      intervalMs: 200,
+      delayMs: 1500
     }
   },
   {
@@ -137,7 +146,8 @@ export const SERVICE_CONFIGS = [
         'div[contenteditable="true"]',
         "textarea",
         'input[type="text"]'
-      ]
+      ],
+      usePasteFirst: true
     }
   },
   {
@@ -146,9 +156,21 @@ export const SERVICE_CONFIGS = [
     urlPattern: "https://chat.qwen.ai/*",
     newUrl: "https://chat.qwen.ai/",
     profile: {
-      selectors: ["textarea", 'div[contenteditable="true"]'],
-      intervalMs: 100,
-      timeoutMs: 10000
+      selectors: [
+        '[data-slate-editor="true"]',
+        'div[contenteditable="plaintext-only"]',
+        'div[contenteditable="true"][role="textbox"]',
+        "textarea",
+        'div[contenteditable="true"]',
+        '[aria-label*="prompt"]',
+        '[aria-label*="message"]',
+        '[class*="chat-input"]',
+        '[class*="input"]'
+      ],
+      usePasteFirst: true,
+      timeoutMs: 20000,
+      intervalMs: 200,
+      delayMs: 1500
     }
   },
   {

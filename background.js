@@ -182,6 +182,10 @@ async function focusTabAndInsert(tab, text, profile) {
   return executeScript(tab.id, text, profile);
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function waitForTabComplete(tabId, timeoutMs = 15000) {
   return new Promise((resolve) => {
     let finished = false;
@@ -230,6 +234,12 @@ async function openAndInsertText(service, text) {
   }
 
   await waitForTabComplete(newTab.id);
+
+  const delayMs = Number(service.profile?.delayMs) > 0 ? Number(service.profile.delayMs) : 0;
+  if (delayMs > 0) {
+    await delay(delayMs);
+  }
+
   return executeScript(newTab.id, text, service.profile);
 }
 

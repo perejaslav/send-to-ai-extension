@@ -55,8 +55,7 @@ export function insertTextIntoPage(text, profile) {
       element.dispatchEvent(new InputEvent("input", {
         bubbles: true,
         cancelable: true,
-        inputType: "insertText",
-        data: text
+        inputType: "insertText"
       }));
     } catch {
       // noop
@@ -189,6 +188,7 @@ export function insertTextIntoPage(text, profile) {
 
     if (isTextInput) {
       element.focus();
+      element.click();
       setNativeInputValue(element, value);
       dispatchStandardEvents(element);
       return isMeaningfullyInserted(element.value, value);
@@ -205,6 +205,7 @@ export function insertTextIntoPage(text, profile) {
     let finished = false;
     let waitForInput = null;
     let timeoutId = null;
+    let observer = null;
 
     const finish = (result) => {
       if (finished) {
@@ -221,10 +222,18 @@ export function insertTextIntoPage(text, profile) {
         clearTimeout(timeoutId);
       }
 
+      if (observer !== null) {
+        observer.disconnect();
+      }
+
       resolve(result);
     };
 
     const attemptInsert = () => {
+      if (finished) {
+        return;
+      }
+
       const match = findInputElement();
       if (!match) {
         return;
@@ -247,6 +256,19 @@ export function insertTextIntoPage(text, profile) {
         tagName: match.element.tagName.toLowerCase()
       });
     };
+
+    if (typeof MutationObserver !== "undefined") {
+      observer = new MutationObserver(() => {
+        if (!finished) {
+          attemptInsert();
+        }
+      });
+
+      observer.observe(document.body || document.documentElement, {
+        childList: true,
+        subtree: true
+      });
+    }
 
     waitForInput = setInterval(attemptInsert, intervalMs);
     timeoutId = setTimeout(() => {
