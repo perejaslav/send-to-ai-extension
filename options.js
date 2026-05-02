@@ -1,13 +1,15 @@
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
-import { SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
+import { CONTEXT_ACTIONS_QWEN, SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
 
 const servicesListElement = document.getElementById("servicesList");
 const specialActionsListElement = document.getElementById("specialActionsList");
+const contextActionsQwenListElement = document.getElementById("contextActionsQwenList");
 const defaultServiceSelectElement = document.getElementById("defaultServiceSelect");
 const saveButtonElement = document.getElementById("saveButton");
 const resetButtonElement = document.getElementById("resetButton");
 const statusElement = document.getElementById("status");
 const showSpecialActionsElement = document.getElementById("showSpecialActions");
+const showContextActionsQwenElement = document.getElementById("showContextActionsQwen");
 
 const state = {
   services: [],
@@ -16,7 +18,9 @@ const state = {
     enabledServices: {},
     defaultServiceId: null,
     showSpecialActions: true,
-    enabledSpecialActions: {}
+    enabledSpecialActions: {},
+    showContextActionsQwen: true,
+    enabledContextActionsQwen: {}
   }
 };
 
@@ -42,7 +46,9 @@ function saveSettings() {
       enabledServices: state.settings.enabledServices,
       defaultServiceId: state.settings.defaultServiceId,
       showSpecialActions: state.settings.showSpecialActions !== false,
-      enabledSpecialActions: state.settings.enabledSpecialActions
+      enabledSpecialActions: state.settings.enabledSpecialActions,
+      showContextActionsQwen: state.settings.showContextActionsQwen !== false,
+      enabledContextActionsQwen: state.settings.enabledContextActionsQwen
     }, () => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
@@ -206,6 +212,33 @@ function renderSpecialActionsList() {
   }
 }
 
+function renderContextActionsQwenList() {
+  contextActionsQwenListElement.textContent = "";
+
+  for (const action of CONTEXT_ACTIONS_QWEN) {
+    const row = document.createElement("label");
+    row.className = "special-action-row";
+    if (!state.settings.showContextActionsQwen) {
+      row.classList.add("is-disabled");
+    }
+
+    const title = document.createElement("span");
+    title.className = "special-action-title";
+    title.textContent = action.title;
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = state.settings.enabledContextActionsQwen[action.id] !== false;
+    checkbox.disabled = !state.settings.showContextActionsQwen;
+    checkbox.addEventListener("change", () => {
+      state.settings.enabledContextActionsQwen[action.id] = checkbox.checked;
+    });
+
+    row.append(title, checkbox);
+    contextActionsQwenListElement.append(row);
+  }
+}
+
 function renderDefaultSelect() {
   defaultServiceSelectElement.textContent = "";
 
@@ -229,8 +262,10 @@ function renderDefaultSelect() {
 function render() {
   renderServicesList();
   renderSpecialActionsList();
+  renderContextActionsQwenList();
   renderDefaultSelect();
   showSpecialActionsElement.checked = state.settings.showSpecialActions !== false;
+  showContextActionsQwenElement.checked = state.settings.showContextActionsQwen !== false;
 }
 
 async function handleSave() {
@@ -271,6 +306,11 @@ defaultServiceSelectElement.addEventListener("change", () => {
 showSpecialActionsElement.addEventListener("change", () => {
   state.settings.showSpecialActions = showSpecialActionsElement.checked;
   renderSpecialActionsList();
+});
+
+showContextActionsQwenElement.addEventListener("change", () => {
+  state.settings.showContextActionsQwen = showContextActionsQwenElement.checked;
+  renderContextActionsQwenList();
 });
 
 saveButtonElement.addEventListener("click", handleSave);

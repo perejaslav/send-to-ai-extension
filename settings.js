@@ -1,11 +1,15 @@
-import { ALL_SERVICE_IDS, SPECIAL_ACTIONS } from "./services.js";
+import { ALL_CONTEXT_ACTION_QWEN_IDS, ALL_SERVICE_IDS, SPECIAL_ACTIONS } from "./services.js";
 
-export const SETTINGS_STORAGE_KEYS = ["serviceOrder", "enabledServices", "defaultServiceId", "showSpecialActions", "enabledSpecialActions"];
+export const SETTINGS_STORAGE_KEYS = ["serviceOrder", "enabledServices", "defaultServiceId", "showSpecialActions", "enabledSpecialActions", "showContextActionsQwen", "enabledContextActionsQwen"];
 
 const SPECIAL_ACTION_IDS = SPECIAL_ACTIONS.map((action) => action.id);
 
 function buildDefaultSpecialActions() {
   return Object.fromEntries(SPECIAL_ACTION_IDS.map((actionId) => [actionId, true]));
+}
+
+function buildDefaultContextActionsQwen() {
+  return Object.fromEntries(ALL_CONTEXT_ACTION_QWEN_IDS.map((actionId) => [actionId, true]));
 }
 
 export function buildDefaultSettings(allServiceIds = ALL_SERVICE_IDS) {
@@ -16,7 +20,9 @@ export function buildDefaultSettings(allServiceIds = ALL_SERVICE_IDS) {
     enabledServices,
     defaultServiceId: allServiceIds[0] || null,
     showSpecialActions: true,
-    enabledSpecialActions: buildDefaultSpecialActions()
+    enabledSpecialActions: buildDefaultSpecialActions(),
+    showContextActionsQwen: true,
+    enabledContextActionsQwen: buildDefaultContextActionsQwen()
   };
 }
 
@@ -73,11 +79,24 @@ export function normalizeSettings(rawSettings, allServiceIds = ALL_SERVICE_IDS) 
       : true;
   }
 
+  const enabledContextQwenFromStorage = source.enabledContextActionsQwen && typeof source.enabledContextActionsQwen === "object"
+    ? source.enabledContextActionsQwen
+    : {};
+
+  const normalizedContextActionsQwen = {};
+  for (const actionId of ALL_CONTEXT_ACTION_QWEN_IDS) {
+    normalizedContextActionsQwen[actionId] = typeof enabledContextQwenFromStorage[actionId] === "boolean"
+      ? enabledContextQwenFromStorage[actionId]
+      : true;
+  }
+
   return {
     serviceOrder: normalizedOrder,
     enabledServices: normalizedEnabled,
     defaultServiceId: hasValidDefault ? source.defaultServiceId : fallbackDefaultId,
     showSpecialActions: source.showSpecialActions !== false,
-    enabledSpecialActions: normalizedSpecialActions
+    enabledSpecialActions: normalizedSpecialActions,
+    showContextActionsQwen: source.showContextActionsQwen !== false,
+    enabledContextActionsQwen: normalizedContextActionsQwen
   };
 }

@@ -2,6 +2,9 @@ import {
   CONTEXT_ACTIONS,
   CONTEXT_ACTIONS_MENU_ID,
   CONTEXT_ACTIONS_MENU_TITLE,
+  CONTEXT_ACTIONS_QWEN,
+  CONTEXT_ACTIONS_QWEN_MENU_ID,
+  CONTEXT_ACTIONS_QWEN_MENU_TITLE,
   QUICK_DEFAULT_MENU_ID,
   ROOT_MENU_ID,
   ROOT_MENU_TITLE,
@@ -90,6 +93,30 @@ export function buildMenuDescriptors(settings) {
       title: action.title,
       contexts: [action.contextType]
     });
+  }
+
+  if (settings.showContextActionsQwen) {
+    const enabledContextActionsQwen = settings.enabledContextActionsQwen || {};
+    const visibleContextQwen = CONTEXT_ACTIONS_QWEN.filter((action) =>
+      isServiceEnabled(settings, action.serviceId) && enabledContextActionsQwen[action.id] !== false
+    );
+
+    if (visibleContextQwen.length > 0) {
+      descriptors.push({
+        id: CONTEXT_ACTIONS_QWEN_MENU_ID,
+        title: CONTEXT_ACTIONS_QWEN_MENU_TITLE,
+        contexts: ["page", "link"]
+      });
+
+      for (const action of visibleContextQwen) {
+        descriptors.push({
+          id: action.id,
+          parentId: CONTEXT_ACTIONS_QWEN_MENU_ID,
+          title: action.title,
+          contexts: [action.contextType]
+        });
+      }
+    }
   }
 
   for (const [id, title] of Object.entries(YOUTUBE_MENU_TITLES)) {

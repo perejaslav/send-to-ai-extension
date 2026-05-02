@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { SPECIAL_ACTIONS } from "../services.js";
+import { ALL_CONTEXT_ACTION_QWEN_IDS, SPECIAL_ACTIONS } from "../services.js";
 import { buildDefaultSettings, normalizeSettings } from "../settings.js";
 
 test("buildDefaultSettings enables all services and special actions", () => {
@@ -13,6 +13,9 @@ test("buildDefaultSettings enables all services and special actions", () => {
   assert.equal(settings.showSpecialActions, true);
   assert.deepEqual(Object.keys(settings.enabledSpecialActions).sort(), SPECIAL_ACTIONS.map((action) => action.id).sort());
   assert.ok(Object.values(settings.enabledSpecialActions).every(Boolean));
+  assert.equal(settings.showContextActionsQwen, true);
+  assert.deepEqual(Object.keys(settings.enabledContextActionsQwen).sort(), ALL_CONTEXT_ACTION_QWEN_IDS.sort());
+  assert.ok(Object.values(settings.enabledContextActionsQwen).every(Boolean));
 });
 
 test("normalizeSettings removes duplicates, invalid ids, and repairs default service", () => {
@@ -24,6 +27,10 @@ test("normalizeSettings removes duplicates, invalid ids, and repairs default ser
     enabledSpecialActions: {
       sendAndTranslateToQwen: false,
       factCheckInChatGPT: false
+    },
+    showContextActionsQwen: false,
+    enabledContextActionsQwen: {
+      pageSummaryInQwen: false
     }
   }, ["a", "b", "c"]);
 
@@ -34,6 +41,9 @@ test("normalizeSettings removes duplicates, invalid ids, and repairs default ser
   assert.equal(settings.enabledSpecialActions.sendAndTranslateToQwen, false);
   assert.equal(settings.enabledSpecialActions.factCheckInChatGPT, false);
   assert.ok(settings.enabledSpecialActions.summarizeInChatGPT);
+  assert.equal(settings.showContextActionsQwen, false);
+  assert.equal(settings.enabledContextActionsQwen.pageSummaryInQwen, false);
+  assert.ok(settings.enabledContextActionsQwen.pageFactCheckInQwen);
 });
 
 test("normalizeSettings keeps special actions enabled when settings are missing", () => {
@@ -44,4 +54,5 @@ test("normalizeSettings keeps special actions enabled when settings are missing"
   }, ["a"]);
 
   assert.ok(Object.values(settings.enabledSpecialActions).every(Boolean));
+  assert.ok(Object.values(settings.enabledContextActionsQwen).every(Boolean));
 });

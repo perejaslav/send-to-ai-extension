@@ -84,3 +84,70 @@ test("buildMenuDescriptors respects individual special action toggles", () => {
   assert.ok(!ids.includes("summarizeInChatGPT"));
   assert.ok(!ids.includes("sendAndTranslateToChatGPT"));
 });
+
+test("buildMenuDescriptors creates Qwen context actions submenu", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToQwen"],
+    enabledServices: { sendToQwen: true },
+    defaultServiceId: "sendToQwen",
+    showSpecialActions: false,
+    showContextActionsQwen: true
+  });
+
+  const ids = descriptors.map((item) => item.id);
+  assert.ok(ids.includes("pageAndLinkActionsQwen"));
+  assert.ok(ids.includes("pageSummaryInQwen"));
+  assert.ok(ids.includes("pageFactCheckInQwen"));
+  assert.ok(ids.includes("pageTranslateInQwen"));
+  assert.ok(ids.includes("pageKeyPointsInQwen"));
+  assert.ok(ids.includes("linkSummaryInQwen"));
+  assert.ok(ids.includes("linkFactCheckInQwen"));
+  assert.ok(ids.includes("linkTranslateInQwen"));
+  assert.ok(ids.includes("linkKeyPointsInQwen"));
+
+  const qwenMenu = descriptors.find((item) => item.id === "pageAndLinkActionsQwen");
+  assert.deepEqual(qwenMenu.contexts, ["page", "link"]);
+
+  const pageSummaryQwen = descriptors.find((item) => item.id === "pageSummaryInQwen");
+  assert.equal(pageSummaryQwen.parentId, "pageAndLinkActionsQwen");
+  assert.deepEqual(pageSummaryQwen.contexts, ["page"]);
+});
+
+test("buildMenuDescriptors omits Qwen context actions when disabled", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToQwen"],
+    enabledServices: { sendToQwen: true },
+    defaultServiceId: "sendToQwen",
+    showSpecialActions: false,
+    showContextActionsQwen: false
+  });
+
+  const ids = descriptors.map((item) => item.id);
+  assert.ok(!ids.includes("pageAndLinkActionsQwen"));
+  assert.ok(!ids.includes("pageSummaryInQwen"));
+});
+
+test("buildMenuDescriptors respects individual Qwen context action toggles", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToQwen"],
+    enabledServices: { sendToQwen: true },
+    defaultServiceId: "sendToQwen",
+    showSpecialActions: false,
+    showContextActionsQwen: true,
+    enabledContextActionsQwen: {
+      pageSummaryInQwen: true,
+      pageFactCheckInQwen: false,
+      pageTranslateInQwen: false,
+      pageKeyPointsInQwen: false,
+      linkSummaryInQwen: false,
+      linkFactCheckInQwen: false,
+      linkTranslateInQwen: false,
+      linkKeyPointsInQwen: false
+    }
+  });
+
+  const ids = descriptors.map((item) => item.id);
+  assert.ok(ids.includes("pageSummaryInQwen"));
+  assert.ok(!ids.includes("pageFactCheckInQwen"));
+  assert.ok(!ids.includes("linkSummaryInQwen"));
+});

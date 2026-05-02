@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./se
 import {
   QUICK_DEFAULT_MENU_ID,
   CONTEXT_ACTIONS_BY_ID,
+  CONTEXT_ACTIONS_QWEN_BY_ID,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS_BY_ID,
   YOUTUBE_MENU_IDS
@@ -314,7 +315,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  const contextAction = CONTEXT_ACTIONS_BY_ID[info.menuItemId];
+  const contextAction = CONTEXT_ACTIONS_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_QWEN_BY_ID[info.menuItemId];
   if (contextAction) {
     await handleContextAction(contextAction, info, tab);
     return;

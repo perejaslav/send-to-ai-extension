@@ -4,6 +4,7 @@ export const YOUTUBE_MENU_IDS = {
   summary: "openYouTubeSummaryInGemini"
 };
 export const CONTEXT_ACTIONS_MENU_ID = "pageAndLinkActions";
+export const CONTEXT_ACTIONS_QWEN_MENU_ID = "pageAndLinkActionsQwen";
 export const QUICK_DEFAULT_MENU_ID = "sendToAIDefault";
 
 export const ROOT_MENU_TITLE = "Отправить в AI";
@@ -12,6 +13,7 @@ export const YOUTUBE_MENU_TITLES = {
   summary: "Краткое резюме YouTube-видео в Gemini"
 };
 export const CONTEXT_ACTIONS_MENU_TITLE = "Страницы и ссылки";
+export const CONTEXT_ACTIONS_QWEN_MENU_TITLE = "Страницы и ссылки в Qwen";
 
 export const SERVICE_CONFIGS = [
   {
@@ -319,5 +321,66 @@ export const CONTEXT_ACTIONS = [
 
 export const SERVICES_BY_ID = Object.fromEntries(SERVICE_CONFIGS.map((service) => [service.id, service]));
 export const SPECIAL_ACTIONS_BY_ID = Object.fromEntries(SPECIAL_ACTIONS.map((action) => [action.id, action]));
+export const CONTEXT_ACTIONS_QWEN = [
+  {
+    id: "pageSummaryInQwen",
+    title: "Саммари страницы в Qwen",
+    contextType: "page",
+    actionType: "summary",
+    serviceId: "sendToQwen"
+  },
+  {
+    id: "pageFactCheckInQwen",
+    title: "Фактчекинг страницы в Qwen",
+    contextType: "page",
+    actionType: "factcheck",
+    serviceId: "sendToQwen"
+  },
+  {
+    id: "pageTranslateInQwen",
+    title: "Перевести страницу в Qwen",
+    contextType: "page",
+    actionType: "translate",
+    serviceId: "sendToQwen"
+  },
+  {
+    id: "pageKeyPointsInQwen",
+    title: "Тезисы страницы в Qwen",
+    contextType: "page",
+    actionType: "key_points",
+    serviceId: "sendToQwen"
+  },
+  {
+    id: "linkSummaryInQwen",
+    title: "Саммари ссылки в Qwen",
+    contextType: "link",
+    actionType: "summary",
+    serviceId: "sendToQwen"
+  },
+  {
+    id: "linkFactCheckInQwen",
+    title: "Фактчекинг ссылки в Qwen",
+    contextType: "link",
+    actionType: "factcheck",
+    serviceId: "sendToQwen"
+  },
+  {
+    id: "linkTranslateInQwen",
+    title: "Перевести ссылку в Qwen",
+    contextType: "link",
+    actionType: "translate",
+    serviceId: "sendToQwen"
+  },
+  {
+    id: "linkKeyPointsInQwen",
+    title: "Тезисы ссылки в Qwen",
+    contextType: "link",
+    actionType: "key_points",
+    serviceId: "sendToQwen"
+  }
+];
+
 export const CONTEXT_ACTIONS_BY_ID = Object.fromEntries(CONTEXT_ACTIONS.map((action) => [action.id, action]));
+export const CONTEXT_ACTIONS_QWEN_BY_ID = Object.fromEntries(CONTEXT_ACTIONS_QWEN.map((action) => [action.id, action]));
 export const ALL_SERVICE_IDS = SERVICE_CONFIGS.map((service) => service.id);
+export const ALL_CONTEXT_ACTION_QWEN_IDS = CONTEXT_ACTIONS_QWEN.map((action) => action.id);

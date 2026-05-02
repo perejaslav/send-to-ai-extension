@@ -40,7 +40,8 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 - **Провести фактчекинг в ChatGPT** - Fact-checks claims in selected text with reliability labels
 - **YouTube transcript article in Gemini** - Opens a YouTube link in Gemini with a prompt to process the video transcript into a full literary article in Russian
 - **YouTube video summary in Gemini** - Opens a YouTube link in Gemini with a prompt to summarize all key facts from the video
-- **Страницы и ссылки** - Unified submenu for summary, fact-checking, translation, and key points by page or link
+- **Страницы и ссылки** - Unified submenu for summary, fact-checking, translation, and key points by page or link in ChatGPT
+- **Страницы и ссылки в Qwen** - Same unified submenu powered by Qwen
 - **Send to <service> (default)** - Quick action for the service selected in extension settings
 
 ## Installation
@@ -149,6 +150,12 @@ send-to-ai-extension/
 - `npm run check` - run unit tests plus syntax checks for the extension modules
 
 ## Changelog
+
+### v3.5
+
+- Added a separate **"Страницы и ссылки в Qwen"** submenu with summary, fact-checking, translation, and key points commands for the current page and links
+- Added toggles in settings to control Qwen page/link command visibility (global and per-item)
+- Updated menu and settings tests
 
 ### v3.3
 
