@@ -30,6 +30,7 @@ test("normalizeCustomCommands filters invalid commands and repairs fields", () =
       serviceId: "sendToChatGPT",
       contextType: "missing",
       template: "  Hello {selection}  ",
+      profileIds: ["marketing", "missing", "marketing"],
       order: "20"
     },
     {
@@ -48,10 +49,12 @@ test("normalizeCustomCommands filters invalid commands and repairs fields", () =
   assert.equal(commands[0].title, "My Command copy");
   assert.equal(commands[0].enabled, false);
   assert.equal(commands[0].contextType, "link");
+  assert.deepEqual(commands[0].profileIds, []);
   assert.equal(commands[1].id, "my-command-2");
   assert.equal(commands[1].description, "Test command");
   assert.equal(commands[1].contextType, "selection");
   assert.equal(commands[1].template, "Hello {selection}");
+  assert.deepEqual(commands[1].profileIds, ["marketing"]);
 });
 
 test("renderCustomCommandTemplate replaces known variables and keeps unknown variables", () => {
