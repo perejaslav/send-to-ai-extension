@@ -159,6 +159,7 @@ test("buildMenuDescriptors creates custom commands submenu", () => {
     defaultServiceId: "sendToChatGPT",
     showSpecialActions: false,
     showContextActionsQwen: false,
+    activeProfileIds: ["all"],
     customCommands: [
       {
         id: "custom-selection",
@@ -189,4 +190,52 @@ test("buildMenuDescriptors creates custom commands submenu", () => {
   const customSelection = descriptors.find((item) => item.id === "custom-selection");
   assert.equal(customSelection.parentId, "customCommands");
   assert.deepEqual(customSelection.contexts, ["selection"]);
+});
+
+test("buildMenuDescriptors filters custom commands by active profiles", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToChatGPT"],
+    enabledServices: { sendToChatGPT: true },
+    defaultServiceId: "sendToChatGPT",
+    showSpecialActions: false,
+    showContextActionsQwen: false,
+    activeProfileIds: ["marketing"],
+    customCommands: [
+      {
+        id: "marketing-command",
+        title: "Marketing command",
+        enabled: true,
+        serviceId: "sendToChatGPT",
+        contextType: "selection",
+        template: "Marketing {selection}",
+        profileIds: ["marketing"],
+        order: 1
+      },
+      {
+        id: "research-command",
+        title: "Research command",
+        enabled: true,
+        serviceId: "sendToChatGPT",
+        contextType: "selection",
+        template: "Research {selection}",
+        profileIds: ["research"],
+        order: 2
+      },
+      {
+        id: "unprofiled-command",
+        title: "Unprofiled command",
+        enabled: true,
+        serviceId: "sendToChatGPT",
+        contextType: "selection",
+        template: "Any {selection}",
+        profileIds: [],
+        order: 3
+      }
+    ]
+  });
+
+  const ids = descriptors.map((item) => item.id);
+  assert.ok(ids.includes("marketing-command"));
+  assert.ok(ids.includes("unprofiled-command"));
+  assert.ok(!ids.includes("research-command"));
 });
