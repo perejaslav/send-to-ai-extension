@@ -110,6 +110,17 @@
       <div id="contextActionsQwenList" class="special-actions-list"></div>
     </section>
 
+    <section class="panel">
+      <h2>Импорт и экспорт</h2>
+      <p class="panel-note">Экспортируй настройки в JSON, чтобы перенести сервисы, порядок меню и пользовательские команды на другой компьютер.</p>
+      <div class="import-export-actions">
+        <button id="exportSettingsButton" type="button" class="secondary">Экспорт настроек</button>
+        <button id="importSettingsButton" type="button" class="secondary">Импорт настроек</button>
+        <button id="resetAllSettingsButton" type="button" class="danger">Сбросить всё</button>
+        <input id="importSettingsFile" type="file" accept="application/json,.json" hidden>
+      </div>
+    </section>
+
     <div class="actions">
       <button id="saveButton" type="button">Сохранить</button>
       <button id="resetButton" type="button" class="secondary">Сбросить</button>
