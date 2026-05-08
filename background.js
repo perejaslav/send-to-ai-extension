@@ -1,4 +1,10 @@
+import {
+  buildCustomCommandPrompt,
+  getCustomCommandSourceContext
+} from "./custom-commands.js";
+import { appendDiagnosticsLog, getDiagnosticStatusTitle } from "./diagnostics.js";
 import { insertTextIntoPage } from "./insertion.js";
+import { extractVisiblePageText } from "./page-extractor.js";
 import { buildPageOrLinkPrompt } from "./context-prompts.js";
 import { buildMenuDescriptors } from "./menus.js";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
@@ -8,12 +14,15 @@ import {
   CONTEXT_ACTIONS_QWEN_BY_ID,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS_BY_ID,
+  YOUTUBE_MENU_ID_PREFIX,
   YOUTUBE_MENU_IDS
 } from "./services.js";
-import { buildYouTubePrompt, buildYouTubeSummaryPrompt, normalizeYouTubeUrl } from "./youtube.js";
+import { normalizeYouTubeUrl } from "./youtube.js";
+import { getYouTubeTemplateById, renderYouTubeTemplate } from "./youtube-templates.js";
 
 const ACTION_DEFAULT_TITLE = "Send to AI";
 const STATUS_CLEAR_DELAY_MS = 5000;
+const PAGE_TEXT_MAX_LENGTH = 30000;
 
 function storageGet(keys) {
   return new Promise((resolve, reject) => {
@@ -113,6 +122,26 @@ function executeScript(tabId, text, profile) {
   });
 }
 
+function executePageExtraction(tabId) {
+  return new Promise((resolve, reject) => {
+    chrome.scripting.executeScript(
+      {
+        target: { tabId },
+        func: extractVisiblePageText,
+        args: [{ maxTextLength: PAGE_TEXT_MAX_LENGTH }]
+      },
+      (results) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+
+        resolve(results?.[0]?.result || { status: "empty", text: "" });
+      }
+    );
+  });
+}
+
 async function loadSettings() {
   try {
     const storedSettings = await storageGet(SETTINGS_STORAGE_KEYS);
@@ -154,23 +183,71 @@ function clearActionStatus() {
   chrome.action.setTitle({ title: ACTION_DEFAULT_TITLE });
 }
 
+function getActionStatusTitle(result) {
+  if (result.status === "success") {
+    return "Текст успешно вставлен";
+  }
+
+  if (result.status === "unsupported_link") {
+    return "Команда доступна только для ссылок YouTube";
+  }
+
+  if (result.status === "page_text_empty") {
+    return "Не удалось извлечь текст страницы";
+  }
+
+  if (result.status === "input_not_found") {
+    return "Страница открылась, но поле ввода не найдено";
+  }
+
+  if (result.status === "insert_failed") {
+    return "Поле найдено, но вставка не удалась";
+  }
+
+  return getDiagnosticStatusTitle(result.status);
+}
+
 function showActionStatus(result) {
   const isSuccess = result.status === "success";
   const badgeText = isSuccess ? "OK" : "ERR";
   const badgeColor = isSuccess ? "#166534" : "#b91c1c";
-  const title = isSuccess
-    ? "Текст успешно вставлен"
-    : result.status === "unsupported_link"
-      ? "Команда доступна только для ссылок YouTube"
-      : result.status === "input_not_found"
-      ? "Страница открылась, но поле ввода не найдено"
-      : "Не удалось вставить текст в поле ввода";
+  const title = getActionStatusTitle(result);
 
   chrome.action.setBadgeBackgroundColor({ color: badgeColor });
   chrome.action.setBadgeText({ text: badgeText });
   chrome.action.setTitle({ title });
 
   setTimeout(clearActionStatus, STATUS_CLEAR_DELAY_MS);
+}
+
+async function logDiagnosticIfNeeded(result, context = {}) {
+  if (!result || result.status === "success") {
+    return;
+  }
+
+  try {
+    await appendDiagnosticsLog({
+      status: result.status || "unknown",
+      serviceId: context.service?.id || context.serviceId || "",
+      serviceTitle: context.service?.title || context.serviceTitle || "",
+      actionId: context.actionId || "",
+      actionTitle: context.actionTitle || "",
+      selector: result.selector || "",
+      tagName: result.tagName || "",
+      url: result.url || context.url || "",
+      message: context.message || getActionStatusTitle(result),
+      details: {
+        method: result.method || "",
+        elapsedMs: result.elapsedMs || 0,
+        expectedLength: result.expectedLength || 0,
+        actualLength: result.actualLength || 0,
+        attemptedSelectors: result.attemptedSelectors || [],
+        timeoutMs: result.timeoutMs || 0
+      }
+    });
+  } catch (error) {
+    console.warn("Diagnostics log failed:", error.message);
+  }
 }
 
 async function focusTabAndInsert(tab, text, profile) {
@@ -244,28 +321,94 @@ async function openAndInsertText(service, text) {
   return executeScript(newTab.id, text, service.profile);
 }
 
-async function runServiceAction(service, text) {
+async function runServiceAction(service, text, context = {}) {
   try {
     const result = await openAndInsertText(service, text);
     showActionStatus(result);
+    await logDiagnosticIfNeeded(result, { ...context, service });
+    return result;
   } catch (error) {
     console.warn("Service action failed:", error.message);
-    showActionStatus({ status: "error" });
+    const result = { status: "error", message: error.message };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, { ...context, service, message: error.message });
+    return result;
   }
 }
 
-async function handleYouTubeLinkAction(linkUrl, variant) {
+function resolveYouTubeTemplateId(menuItemId) {
+  if (menuItemId === YOUTUBE_MENU_IDS.article) {
+    return "article";
+  }
+
+  if (menuItemId === YOUTUBE_MENU_IDS.summary) {
+    return "summary";
+  }
+
+  if (typeof menuItemId === "string" && menuItemId.startsWith(YOUTUBE_MENU_ID_PREFIX)) {
+    return menuItemId.slice(YOUTUBE_MENU_ID_PREFIX.length);
+  }
+
+  return null;
+}
+
+async function handleYouTubeTemplateAction(linkUrl, templateId, settings) {
   const cleanUrl = normalizeYouTubeUrl(linkUrl);
   if (!cleanUrl) {
-    showActionStatus({ status: "unsupported_link" });
+    const result = { status: "unsupported_link" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: `youtube:${templateId}`,
+      actionTitle: "YouTube command",
+      url: linkUrl
+    });
     return;
   }
 
-  const geminiService = SERVICES_BY_ID.sendToGemini;
-  const textToInsert = variant === "summary"
-    ? buildYouTubeSummaryPrompt(cleanUrl)
-    : buildYouTubePrompt(cleanUrl);
-  await runServiceAction(geminiService, textToInsert);
+  const template = getYouTubeTemplateById(settings.youtubeTemplates, templateId);
+  if (!template || template.enabled === false) {
+    const result = { status: "command_invalid" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: `youtube:${templateId}`,
+      actionTitle: "YouTube command",
+      url: cleanUrl
+    });
+    return;
+  }
+
+  const targetService = SERVICES_BY_ID[template.serviceId];
+  if (!targetService || settings.enabledServices[targetService.id] === false) {
+    const result = { status: targetService ? "service_disabled" : "service_not_found" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: `youtube:${template.id}`,
+      actionTitle: template.title,
+      serviceId: template.serviceId,
+      serviceTitle: targetService?.title || "",
+      url: cleanUrl
+    });
+    return;
+  }
+
+  const textToInsert = renderYouTubeTemplate(template, { youtubeUrl: cleanUrl });
+  if (!textToInsert) {
+    const result = { status: "command_invalid" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: `youtube:${template.id}`,
+      actionTitle: template.title,
+      service: targetService,
+      url: cleanUrl
+    });
+    return;
+  }
+
+  await runServiceAction(targetService, textToInsert, {
+    actionId: `youtube:${template.id}`,
+    actionTitle: template.title,
+    url: cleanUrl
+  });
 }
 
 async function handleContextAction(action, info, tab) {
@@ -274,23 +417,129 @@ async function handleContextAction(action, info, tab) {
     : info.linkUrl || tab?.url || "";
 
   if (!sourceUrl || !/^https?:\/\//i.test(sourceUrl)) {
-    showActionStatus({ status: "unsupported_link" });
+    const result = { status: "unsupported_link" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: action.id,
+      actionTitle: action.title,
+      url: sourceUrl
+    });
     return;
   }
 
   const targetService = SERVICES_BY_ID[action.serviceId];
   if (!targetService) {
-    showActionStatus({ status: "error" });
+    const result = { status: "service_not_found" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: action.id,
+      actionTitle: action.title,
+      serviceId: action.serviceId,
+      url: sourceUrl
+    });
     return;
   }
 
   const textToInsert = buildPageOrLinkPrompt(action.contextType, action.actionType, sourceUrl, tab?.title || "");
   if (!textToInsert) {
-    showActionStatus({ status: "error" });
+    const result = { status: "command_invalid" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: action.id,
+      actionTitle: action.title,
+      service: targetService,
+      url: sourceUrl
+    });
     return;
   }
 
-  await runServiceAction(targetService, textToInsert);
+  await runServiceAction(targetService, textToInsert, {
+    actionId: action.id,
+    actionTitle: action.title,
+    url: sourceUrl
+  });
+}
+
+async function buildExtraCustomCommandContext(command, tab) {
+  if (command.contextType !== "page_text") {
+    return {};
+  }
+
+  if (!tab?.id) {
+    return { pageText: "" };
+  }
+
+  try {
+    const result = await executePageExtraction(tab.id);
+    if (!result.text) {
+      showActionStatus({ status: "page_text_empty" });
+      return null;
+    }
+
+    return {
+      pageText: result.text,
+      selection: result.selection || "",
+      url: result.url || tab.url || "",
+      title: result.title || tab.title || "",
+      pageDescription: result.description || "",
+      pageTextWasTruncated: result.wasTruncated ? "true" : "false"
+    };
+  } catch (error) {
+    console.warn("Page text extraction failed:", error.message);
+    showActionStatus({ status: "page_text_empty" });
+    return null;
+  }
+}
+
+async function handleCustomCommand(command, settings, info, tab) {
+  const targetService = SERVICES_BY_ID[command.serviceId];
+  if (!targetService || settings.enabledServices[targetService.id] === false) {
+    const result = { status: targetService ? "service_disabled" : "service_not_found" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: command.id,
+      actionTitle: command.title,
+      serviceId: command.serviceId,
+      serviceTitle: targetService?.title || "",
+      url: info.pageUrl || tab?.url || ""
+    });
+    return;
+  }
+
+  const extraContext = await buildExtraCustomCommandContext(command, tab);
+  if (extraContext === null) {
+    await logDiagnosticIfNeeded({ status: "page_text_empty" }, {
+      actionId: command.id,
+      actionTitle: command.title,
+      service: targetService,
+      url: info.pageUrl || tab?.url || ""
+    });
+    return;
+  }
+
+  const sourceContext = getCustomCommandSourceContext(command, info, tab, {
+    ...extraContext,
+    service: targetService.title
+  });
+  const textToInsert = buildCustomCommandPrompt(command, sourceContext);
+
+  if (!textToInsert) {
+    const result = { status: "command_invalid" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: command.id,
+      actionTitle: command.title,
+      service: targetService,
+      url: sourceContext.url
+    });
+    return;
+  }
+
+  await runServiceAction(targetService, textToInsert, {
+    actionId: command.id,
+    actionTitle: command.title,
+    url: sourceContext.url
+  });
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -315,27 +564,28 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  const settings = await loadSettings();
+  const customCommand = settings.customCommands.find((command) => command.id === info.menuItemId);
+  if (customCommand) {
+    await handleCustomCommand(customCommand, settings, info, tab);
+    return;
+  }
+
   const contextAction = CONTEXT_ACTIONS_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_QWEN_BY_ID[info.menuItemId];
   if (contextAction) {
     await handleContextAction(contextAction, info, tab);
     return;
   }
 
-  if (info.menuItemId === YOUTUBE_MENU_IDS.article) {
-    await handleYouTubeLinkAction(info.linkUrl || "", "article");
-    return;
-  }
-
-  if (info.menuItemId === YOUTUBE_MENU_IDS.summary) {
-    await handleYouTubeLinkAction(info.linkUrl || "", "summary");
+  const youtubeTemplateId = resolveYouTubeTemplateId(info.menuItemId);
+  if (youtubeTemplateId) {
+    await handleYouTubeTemplateAction(info.linkUrl || "", youtubeTemplateId, settings);
     return;
   }
 
   if (!info.selectionText) {
     return;
   }
-
-  const settings = await loadSettings();
 
   if (info.menuItemId === QUICK_DEFAULT_MENU_ID) {
     if (!settings.defaultServiceId) {
@@ -347,7 +597,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       return;
     }
 
-    await runServiceAction(defaultService, info.selectionText);
+    await runServiceAction(defaultService, info.selectionText, {
+      actionId: QUICK_DEFAULT_MENU_ID,
+      actionTitle: "Отправить в сервис по умолчанию",
+      url: info.pageUrl || tab?.url || ""
+    });
     return;
   }
 
@@ -357,7 +611,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       return;
     }
 
-    await runServiceAction(directService, info.selectionText);
+    await runServiceAction(directService, info.selectionText, {
+      actionId: directService.id,
+      actionTitle: directService.title,
+      url: info.pageUrl || tab?.url || ""
+    });
     return;
   }
 
@@ -368,10 +626,23 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   const targetService = SERVICES_BY_ID[specialAction.serviceId];
   if (!targetService || settings.enabledServices[targetService.id] === false) {
+    const result = { status: targetService ? "service_disabled" : "service_not_found" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: specialAction.id,
+      actionTitle: specialAction.title,
+      serviceId: specialAction.serviceId,
+      serviceTitle: targetService?.title || "",
+      url: info.pageUrl || tab?.url || ""
+    });
     return;
   }
 
-  await runServiceAction(targetService, specialAction.transformText(info.selectionText));
+  await runServiceAction(targetService, specialAction.transformText(info.selectionText), {
+    actionId: specialAction.id,
+    actionTitle: specialAction.title,
+    url: info.pageUrl || tab?.url || ""
+  });
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -385,7 +656,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  runServiceAction(service, message.text)
+  runServiceAction(service, message.text, {
+    actionId: "popup",
+    actionTitle: "Popup quick send",
+    url: sender?.tab?.url || ""
+  })
     .then((result) => sendResponse(result))
     .catch((error) => {
       console.warn("Popup service action failed:", error.message);

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { ALL_PROFILES_ID } from "../profiles.js";
 import { ALL_CONTEXT_ACTION_QWEN_IDS, SPECIAL_ACTIONS } from "../services.js";
 import { buildDefaultSettings, normalizeSettings } from "../settings.js";
 
@@ -16,6 +17,8 @@ test("buildDefaultSettings enables all services and special actions", () => {
   assert.equal(settings.showContextActionsQwen, true);
   assert.deepEqual(Object.keys(settings.enabledContextActionsQwen).sort(), ALL_CONTEXT_ACTION_QWEN_IDS.sort());
   assert.ok(Object.values(settings.enabledContextActionsQwen).every(Boolean));
+  assert.deepEqual(settings.customCommands, []);
+  assert.deepEqual(settings.activeProfileIds, [ALL_PROFILES_ID]);
 });
 
 test("normalizeSettings removes duplicates, invalid ids, and repairs default service", () => {
@@ -31,7 +34,8 @@ test("normalizeSettings removes duplicates, invalid ids, and repairs default ser
     showContextActionsQwen: false,
     enabledContextActionsQwen: {
       pageSummaryInQwen: false
-    }
+    },
+    activeProfileIds: ["marketing", "missing", "marketing"]
   }, ["a", "b", "c"]);
 
   assert.deepEqual(settings.serviceOrder, ["b", "a", "c"]);
@@ -44,6 +48,7 @@ test("normalizeSettings removes duplicates, invalid ids, and repairs default ser
   assert.equal(settings.showContextActionsQwen, false);
   assert.equal(settings.enabledContextActionsQwen.pageSummaryInQwen, false);
   assert.ok(settings.enabledContextActionsQwen.pageFactCheckInQwen);
+  assert.deepEqual(settings.activeProfileIds, ["marketing"]);
 });
 
 test("normalizeSettings keeps special actions enabled when settings are missing", () => {
@@ -55,4 +60,33 @@ test("normalizeSettings keeps special actions enabled when settings are missing"
 
   assert.ok(Object.values(settings.enabledSpecialActions).every(Boolean));
   assert.ok(Object.values(settings.enabledContextActionsQwen).every(Boolean));
+  assert.deepEqual(settings.activeProfileIds, [ALL_PROFILES_ID]);
+});
+
+test("normalizeSettings normalizes custom commands", () => {
+  const settings = normalizeSettings({
+    serviceOrder: ["a", "b"],
+    enabledServices: { a: true, b: true },
+    defaultServiceId: "a",
+    customCommands: [
+      {
+        title: "Valid custom command",
+        serviceId: "a",
+        contextType: "selection",
+        template: "Process {selection}",
+        profileIds: ["research", "missing"],
+        order: 2
+      },
+      {
+        title: "Invalid service",
+        serviceId: "missing",
+        template: "Skip me"
+      }
+    ]
+  }, ["a", "b"]);
+
+  assert.equal(settings.customCommands.length, 1);
+  assert.equal(settings.customCommands[0].title, "Valid custom command");
+  assert.equal(settings.customCommands[0].serviceId, "a");
+  assert.deepEqual(settings.customCommands[0].profileIds, ["research"]);
 });

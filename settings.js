@@ -1,6 +1,20 @@
+import { normalizeCustomCommands } from "./custom-commands.js";
+import { ALL_PROFILES_ID, normalizeActiveProfileIds } from "./profiles.js";
 import { ALL_CONTEXT_ACTION_QWEN_IDS, ALL_SERVICE_IDS, SPECIAL_ACTIONS } from "./services.js";
+import { normalizeYouTubeTemplates } from "./youtube-templates.js";
 
-export const SETTINGS_STORAGE_KEYS = ["serviceOrder", "enabledServices", "defaultServiceId", "showSpecialActions", "enabledSpecialActions", "showContextActionsQwen", "enabledContextActionsQwen"];
+export const SETTINGS_STORAGE_KEYS = [
+  "serviceOrder",
+  "enabledServices",
+  "defaultServiceId",
+  "showSpecialActions",
+  "enabledSpecialActions",
+  "showContextActionsQwen",
+  "enabledContextActionsQwen",
+  "customCommands",
+  "activeProfileIds",
+  "youtubeTemplates"
+];
 
 const SPECIAL_ACTION_IDS = SPECIAL_ACTIONS.map((action) => action.id);
 
@@ -22,7 +36,10 @@ export function buildDefaultSettings(allServiceIds = ALL_SERVICE_IDS) {
     showSpecialActions: true,
     enabledSpecialActions: buildDefaultSpecialActions(),
     showContextActionsQwen: true,
-    enabledContextActionsQwen: buildDefaultContextActionsQwen()
+    enabledContextActionsQwen: buildDefaultContextActionsQwen(),
+    customCommands: [],
+    activeProfileIds: [ALL_PROFILES_ID],
+    youtubeTemplates: normalizeYouTubeTemplates()
   };
 }
 
@@ -97,6 +114,9 @@ export function normalizeSettings(rawSettings, allServiceIds = ALL_SERVICE_IDS) 
     showSpecialActions: source.showSpecialActions !== false,
     enabledSpecialActions: normalizedSpecialActions,
     showContextActionsQwen: source.showContextActionsQwen !== false,
-    enabledContextActionsQwen: normalizedContextActionsQwen
+    enabledContextActionsQwen: normalizedContextActionsQwen,
+    customCommands: normalizeCustomCommands(source.customCommands, allServiceIds),
+    activeProfileIds: normalizeActiveProfileIds(source.activeProfileIds),
+    youtubeTemplates: normalizeYouTubeTemplates(source.youtubeTemplates)
   };
 }

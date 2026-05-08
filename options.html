@@ -9,7 +9,7 @@
 <body>
   <main class="container">
     <h1>Настройки Send to AI</h1>
-    <p class="lead">Включай или отключай сервисы, меняй порядок, управляй специальными командами и выбери сервис по умолчанию для быстрого действия.</p>
+    <p class="lead">Включай или отключай сервисы, меняй порядок, управляй специальными командами и создавай свои prompt-команды для контекстного меню.</p>
 
     <section class="panel">
       <h2>Сервисы в контекстном меню</h2>
@@ -20,6 +20,94 @@
       <h2>Сервис по умолчанию</h2>
       <label class="default-label" for="defaultServiceSelect">Быстрая команда "Отправить в ... (по умолчанию)"</label>
       <select id="defaultServiceSelect"></select>
+    </section>
+
+    <section class="panel">
+      <h2>Профили команд</h2>
+      <p class="panel-note">Выбери, какие группы пользовательских команд показывать в контекстном меню. Команды без профиля видны всегда.</p>
+      <div id="activeProfilesList" class="profiles-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Мои команды</h2>
+          <p class="panel-note">Создавай собственные команды для выделенного текста, страниц и ссылок. Они появятся в подменю «Мои команды».</p>
+        </div>
+        <button id="addCustomCommandButton" type="button">Добавить команду</button>
+      </div>
+
+      <div class="custom-commands-layout">
+        <div>
+          <div id="customCommandsList" class="custom-commands-list"></div>
+          <div id="customCommandsEmpty" class="empty-state">Пользовательских команд пока нет.</div>
+        </div>
+
+        <form id="customCommandForm" class="custom-command-form" hidden>
+          <h3 id="customCommandFormTitle">Команда</h3>
+
+          <label class="field-label" for="customCommandTitle">Название</label>
+          <input id="customCommandTitle" type="text" placeholder="Например: Сделать пост для Telegram">
+
+          <label class="field-label" for="customCommandDescription">Описание</label>
+          <input id="customCommandDescription" type="text" placeholder="Короткое пояснение для себя">
+
+          <div class="form-grid">
+            <label class="field-label" for="customCommandService">Сервис
+              <select id="customCommandService"></select>
+            </label>
+
+            <label class="field-label" for="customCommandContext">Контекст
+              <select id="customCommandContext">
+                <option value="selection">Выделенный текст</option>
+                <option value="page">Текущая страница</option>
+                <option value="link">Ссылка</option>
+                <option value="youtube">YouTube-ссылка</option>
+                <option value="page_text">Текст страницы</option>
+              </select>
+            </label>
+          </div>
+
+          <fieldset class="profile-fieldset">
+            <legend>Профили команды</legend>
+            <p class="field-note">Профили нужны для фильтрации меню. Если ничего не выбрать, команда будет видна во всех профилях.</p>
+            <div id="customCommandProfilesList" class="profiles-list compact"></div>
+          </fieldset>
+
+          <label class="service-toggle command-enabled-toggle" for="customCommandEnabled">
+            <input id="customCommandEnabled" type="checkbox">
+            <span>Команда включена</span>
+          </label>
+
+          <label class="field-label" for="customCommandTemplate">Prompt-шаблон</label>
+          <textarea id="customCommandTemplate" rows="9" placeholder="Например: Сделай краткое саммари:\n\n{selection}"></textarea>
+
+          <div class="variables-help">
+            Доступные переменные: <code>{selection}</code>, <code>{url}</code>, <code>{title}</code>, <code>{date}</code>, <code>{service}</code>, <code>{pageText}</code>, <code>{youtubeUrl}</code>.
+          </div>
+
+          <div class="command-warning" id="customCommandWarning" hidden></div>
+
+          <div class="command-preview">
+            <div class="preview-heading">
+              <strong>Предпросмотр prompt</strong>
+              <button id="previewCustomCommandButton" type="button" class="secondary">Обновить предпросмотр</button>
+            </div>
+            <pre id="customCommandPreview"></pre>
+          </div>
+
+          <div class="command-actions">
+            <button id="deleteCustomCommandButton" type="button" class="danger">Удалить команду</button>
+            <button id="cancelCustomCommandButton" type="button" class="secondary">Закрыть форму</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>YouTube-шаблоны</h2>
+      <p class="panel-note">Редактируй команды, которые появляются при клике правой кнопкой по YouTube-ссылке. Переменная <code>{youtubeUrl}</code> будет заменена на нормализованную ссылку.</p>
+      <div id="youtubeTemplatesList" class="youtube-templates-list"></div>
     </section>
 
     <section class="panel">
@@ -40,6 +128,28 @@
       <div id="contextActionsQwenList" class="special-actions-list"></div>
     </section>
 
+    <section class="panel">
+      <h2>Диагностика</h2>
+      <p class="panel-note">Здесь отображаются последние ошибки отправки. Сам текст prompt не сохраняется.</p>
+      <div class="diagnostics-actions">
+        <button id="refreshDiagnosticsButton" type="button" class="secondary">Обновить</button>
+        <button id="clearDiagnosticsButton" type="button" class="danger">Очистить журнал</button>
+      </div>
+      <div id="diagnosticsEmpty" class="empty-state">Ошибок пока нет.</div>
+      <div id="diagnosticsList" class="diagnostics-list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Импорт и экспорт</h2>
+      <p class="panel-note">Экспортируй настройки в JSON, чтобы перенести сервисы, порядок меню и пользовательские команды на другой компьютер.</p>
+      <div class="import-export-actions">
+        <button id="exportSettingsButton" type="button" class="secondary">Экспорт настроек</button>
+        <button id="importSettingsButton" type="button" class="secondary">Импорт настроек</button>
+        <button id="resetAllSettingsButton" type="button" class="danger">Сбросить всё</button>
+        <input id="importSettingsFile" type="file" accept="application/json,.json" hidden>
+      </div>
+    </section>
+
     <div class="actions">
       <button id="saveButton" type="button">Сохранить</button>
       <button id="resetButton" type="button" class="secondary">Сбросить</button>
@@ -48,5 +158,7 @@
   </main>
 
   <script type="module" src="options.js"></script>
+  <script type="module" src="youtube-options.js"></script>
+  <script type="module" src="options-ui.js"></script>
 </body>
 </html>

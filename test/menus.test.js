@@ -151,3 +151,91 @@ test("buildMenuDescriptors respects individual Qwen context action toggles", () 
   assert.ok(!ids.includes("pageFactCheckInQwen"));
   assert.ok(!ids.includes("linkSummaryInQwen"));
 });
+
+test("buildMenuDescriptors creates custom commands submenu", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToChatGPT", "sendToQwen"],
+    enabledServices: { sendToChatGPT: true, sendToQwen: false },
+    defaultServiceId: "sendToChatGPT",
+    showSpecialActions: false,
+    showContextActionsQwen: false,
+    activeProfileIds: ["all"],
+    customCommands: [
+      {
+        id: "custom-selection",
+        title: "Custom selection",
+        enabled: true,
+        serviceId: "sendToChatGPT",
+        contextType: "selection",
+        template: "Process {selection}",
+        order: 1
+      },
+      {
+        id: "custom-disabled-service",
+        title: "Custom disabled service",
+        enabled: true,
+        serviceId: "sendToQwen",
+        contextType: "link",
+        template: "Process {url}",
+        order: 2
+      }
+    ]
+  });
+
+  const ids = descriptors.map((item) => item.id);
+  assert.ok(ids.includes("customCommands"));
+  assert.ok(ids.includes("custom-selection"));
+  assert.ok(!ids.includes("custom-disabled-service"));
+
+  const customSelection = descriptors.find((item) => item.id === "custom-selection");
+  assert.equal(customSelection.parentId, "customCommands");
+  assert.deepEqual(customSelection.contexts, ["selection"]);
+});
+
+test("buildMenuDescriptors filters custom commands by active profiles", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToChatGPT"],
+    enabledServices: { sendToChatGPT: true },
+    defaultServiceId: "sendToChatGPT",
+    showSpecialActions: false,
+    showContextActionsQwen: false,
+    activeProfileIds: ["marketing"],
+    customCommands: [
+      {
+        id: "marketing-command",
+        title: "Marketing command",
+        enabled: true,
+        serviceId: "sendToChatGPT",
+        contextType: "selection",
+        template: "Marketing {selection}",
+        profileIds: ["marketing"],
+        order: 1
+      },
+      {
+        id: "research-command",
+        title: "Research command",
+        enabled: true,
+        serviceId: "sendToChatGPT",
+        contextType: "selection",
+        template: "Research {selection}",
+        profileIds: ["research"],
+        order: 2
+      },
+      {
+        id: "unprofiled-command",
+        title: "Unprofiled command",
+        enabled: true,
+        serviceId: "sendToChatGPT",
+        contextType: "selection",
+        template: "Any {selection}",
+        profileIds: [],
+        order: 3
+      }
+    ]
+  });
+
+  const ids = descriptors.map((item) => item.id);
+  assert.ok(ids.includes("marketing-command"));
+  assert.ok(ids.includes("unprofiled-command"));
+  assert.ok(!ids.includes("research-command"));
+});

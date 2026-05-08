@@ -1,7 +1,11 @@
 export const ROOT_MENU_ID = "sendToAI";
+export const YOUTUBE_MENU_ID_PREFIX = "openYouTubeTemplate:";
 export const YOUTUBE_MENU_IDS = {
   article: "openYouTubeArticleInGemini",
-  summary: "openYouTubeSummaryInGemini"
+  summary: "openYouTubeSummaryInGemini",
+  facts: `${YOUTUBE_MENU_ID_PREFIX}facts`,
+  telegram: `${YOUTUBE_MENU_ID_PREFIX}telegram`,
+  research: `${YOUTUBE_MENU_ID_PREFIX}research`
 };
 export const CONTEXT_ACTIONS_MENU_ID = "pageAndLinkActions";
 export const CONTEXT_ACTIONS_QWEN_MENU_ID = "pageAndLinkActionsQwen";
@@ -10,7 +14,10 @@ export const QUICK_DEFAULT_MENU_ID = "sendToAIDefault";
 export const ROOT_MENU_TITLE = "Отправить в AI";
 export const YOUTUBE_MENU_TITLES = {
   article: "Статья по YouTube-транскрипции в Gemini",
-  summary: "Краткое резюме YouTube-видео в Gemini"
+  summary: "Краткое резюме YouTube-видео в Gemini",
+  facts: "Список фактов из YouTube-видео в Gemini",
+  telegram: "Telegram-пост по YouTube-видео в Gemini",
+  research: "Тезисы для исследования по YouTube-видео в Gemini"
 };
 export const CONTEXT_ACTIONS_MENU_TITLE = "Страницы и ссылки";
 export const CONTEXT_ACTIONS_QWEN_MENU_TITLE = "Страницы и ссылки в Qwen";
