@@ -1,4 +1,10 @@
 import {
+  CUSTOM_COMMANDS_MENU_ID,
+  CUSTOM_COMMANDS_MENU_TITLE,
+  getContextMenuContextsForCommand,
+  isCustomCommandVisible
+} from "./custom-commands.js";
+import {
   CONTEXT_ACTIONS,
   CONTEXT_ACTIONS_MENU_ID,
   CONTEXT_ACTIONS_MENU_TITLE,
@@ -17,6 +23,33 @@ import {
 
 function isServiceEnabled(settings, serviceId) {
   return settings.enabledServices[serviceId] !== false;
+}
+
+function buildCustomCommandDescriptors(settings) {
+  const visibleCommands = (settings.customCommands || []).filter((command) => isCustomCommandVisible(command, settings));
+
+  if (visibleCommands.length === 0) {
+    return [];
+  }
+
+  const descriptors = [
+    {
+      id: CUSTOM_COMMANDS_MENU_ID,
+      title: CUSTOM_COMMANDS_MENU_TITLE,
+      contexts: ["selection", "page", "link"]
+    }
+  ];
+
+  for (const command of visibleCommands) {
+    descriptors.push({
+      id: command.id,
+      parentId: CUSTOM_COMMANDS_MENU_ID,
+      title: command.title,
+      contexts: getContextMenuContextsForCommand(command)
+    });
+  }
+
+  return descriptors;
 }
 
 export function buildMenuDescriptors(settings) {
@@ -118,6 +151,8 @@ export function buildMenuDescriptors(settings) {
       }
     }
   }
+
+  descriptors.push(...buildCustomCommandDescriptors(settings));
 
   for (const [id, title] of Object.entries(YOUTUBE_MENU_TITLES)) {
     descriptors.push({
