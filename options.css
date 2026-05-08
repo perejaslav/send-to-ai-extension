@@ -394,7 +394,8 @@ select {
 }
 
 .command-actions,
-.import-export-actions {
+.import-export-actions,
+.diagnostics-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -403,6 +404,45 @@ select {
 
 .command-actions {
   justify-content: flex-end;
+}
+
+.diagnostics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.diagnostic-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fbfcff;
+  overflow: hidden;
+}
+
+.diagnostic-item summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.diagnostic-body {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diagnostic-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.diagnostic-row span {
+  overflow-wrap: anywhere;
 }
 
 .actions {
@@ -419,7 +459,8 @@ select {
 
 @media (max-width: 760px) {
   .custom-commands-layout,
-  .form-grid {
+  .form-grid,
+  .diagnostic-row {
     grid-template-columns: 1fr;
   }
 
