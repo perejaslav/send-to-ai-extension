@@ -16,6 +16,7 @@ test("buildDefaultSettings enables all services and special actions", () => {
   assert.equal(settings.showContextActionsQwen, true);
   assert.deepEqual(Object.keys(settings.enabledContextActionsQwen).sort(), ALL_CONTEXT_ACTION_QWEN_IDS.sort());
   assert.ok(Object.values(settings.enabledContextActionsQwen).every(Boolean));
+  assert.deepEqual(settings.customCommands, []);
 });
 
 test("normalizeSettings removes duplicates, invalid ids, and repairs default service", () => {
@@ -55,4 +56,30 @@ test("normalizeSettings keeps special actions enabled when settings are missing"
 
   assert.ok(Object.values(settings.enabledSpecialActions).every(Boolean));
   assert.ok(Object.values(settings.enabledContextActionsQwen).every(Boolean));
+});
+
+test("normalizeSettings normalizes custom commands", () => {
+  const settings = normalizeSettings({
+    serviceOrder: ["a", "b"],
+    enabledServices: { a: true, b: true },
+    defaultServiceId: "a",
+    customCommands: [
+      {
+        title: "Valid custom command",
+        serviceId: "a",
+        contextType: "selection",
+        template: "Process {selection}",
+        order: 2
+      },
+      {
+        title: "Invalid service",
+        serviceId: "missing",
+        template: "Skip me"
+      }
+    ]
+  }, ["a", "b"]);
+
+  assert.equal(settings.customCommands.length, 1);
+  assert.equal(settings.customCommands[0].title, "Valid custom command");
+  assert.equal(settings.customCommands[0].serviceId, "a");
 });
