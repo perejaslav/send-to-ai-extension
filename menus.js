@@ -4,6 +4,7 @@ import {
   getContextMenuContextsForCommand,
   isCustomCommandVisible
 } from "./custom-commands.js";
+import { isCommandVisibleForProfiles } from "./profiles.js";
 import {
   CONTEXT_ACTIONS,
   CONTEXT_ACTIONS_MENU_ID,
@@ -26,7 +27,10 @@ function isServiceEnabled(settings, serviceId) {
 }
 
 function buildCustomCommandDescriptors(settings) {
-  const visibleCommands = (settings.customCommands || []).filter((command) => isCustomCommandVisible(command, settings));
+  const visibleCommands = (settings.customCommands || []).filter((command) =>
+    isCustomCommandVisible(command, settings)
+    && isCommandVisibleForProfiles(command, settings.activeProfileIds)
+  );
 
   if (visibleCommands.length === 0) {
     return [];
