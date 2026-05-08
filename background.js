@@ -2,6 +2,7 @@ import {
   buildCustomCommandPrompt,
   getCustomCommandSourceContext
 } from "./custom-commands.js";
+import { appendDiagnosticsLog, getDiagnosticStatusTitle } from "./diagnostics.js";
 import { insertTextIntoPage } from "./insertion.js";
 import { extractVisiblePageText } from "./page-extractor.js";
 import { buildPageOrLinkPrompt } from "./context-prompts.js";
@@ -180,25 +181,71 @@ function clearActionStatus() {
   chrome.action.setTitle({ title: ACTION_DEFAULT_TITLE });
 }
 
+function getActionStatusTitle(result) {
+  if (result.status === "success") {
+    return "Текст успешно вставлен";
+  }
+
+  if (result.status === "unsupported_link") {
+    return "Команда доступна только для ссылок YouTube";
+  }
+
+  if (result.status === "page_text_empty") {
+    return "Не удалось извлечь текст страницы";
+  }
+
+  if (result.status === "input_not_found") {
+    return "Страница открылась, но поле ввода не найдено";
+  }
+
+  if (result.status === "insert_failed") {
+    return "Поле найдено, но вставка не удалась";
+  }
+
+  return getDiagnosticStatusTitle(result.status);
+}
+
 function showActionStatus(result) {
   const isSuccess = result.status === "success";
   const badgeText = isSuccess ? "OK" : "ERR";
   const badgeColor = isSuccess ? "#166534" : "#b91c1c";
-  const title = isSuccess
-    ? "Текст успешно вставлен"
-    : result.status === "unsupported_link"
-      ? "Команда доступна только для ссылок YouTube"
-      : result.status === "page_text_empty"
-      ? "Не удалось извлечь текст страницы"
-      : result.status === "input_not_found"
-      ? "Страница открылась, но поле ввода не найдено"
-      : "Не удалось вставить текст в поле ввода";
+  const title = getActionStatusTitle(result);
 
   chrome.action.setBadgeBackgroundColor({ color: badgeColor });
   chrome.action.setBadgeText({ text: badgeText });
   chrome.action.setTitle({ title });
 
   setTimeout(clearActionStatus, STATUS_CLEAR_DELAY_MS);
+}
+
+async function logDiagnosticIfNeeded(result, context = {}) {
+  if (!result || result.status === "success") {
+    return;
+  }
+
+  try {
+    await appendDiagnosticsLog({
+      status: result.status || "unknown",
+      serviceId: context.service?.id || context.serviceId || "",
+      serviceTitle: context.service?.title || context.serviceTitle || "",
+      actionId: context.actionId || "",
+      actionTitle: context.actionTitle || "",
+      selector: result.selector || "",
+      tagName: result.tagName || "",
+      url: result.url || context.url || "",
+      message: context.message || getActionStatusTitle(result),
+      details: {
+        method: result.method || "",
+        elapsedMs: result.elapsedMs || 0,
+        expectedLength: result.expectedLength || 0,
+        actualLength: result.actualLength || 0,
+        attemptedSelectors: result.attemptedSelectors || [],
+        timeoutMs: result.timeoutMs || 0
+      }
+    });
+  } catch (error) {
+    console.warn("Diagnostics log failed:", error.message);
+  }
 }
 
 async function focusTabAndInsert(tab, text, profile) {
@@ -272,20 +319,31 @@ async function openAndInsertText(service, text) {
   return executeScript(newTab.id, text, service.profile);
 }
 
-async function runServiceAction(service, text) {
+async function runServiceAction(service, text, context = {}) {
   try {
     const result = await openAndInsertText(service, text);
     showActionStatus(result);
+    await logDiagnosticIfNeeded(result, { ...context, service });
+    return result;
   } catch (error) {
     console.warn("Service action failed:", error.message);
-    showActionStatus({ status: "error" });
+    const result = { status: "error", message: error.message };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, { ...context, service, message: error.message });
+    return result;
   }
 }
 
 async function handleYouTubeLinkAction(linkUrl, variant) {
   const cleanUrl = normalizeYouTubeUrl(linkUrl);
   if (!cleanUrl) {
-    showActionStatus({ status: "unsupported_link" });
+    const result = { status: "unsupported_link" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: variant === "summary" ? YOUTUBE_MENU_IDS.summary : YOUTUBE_MENU_IDS.article,
+      actionTitle: "YouTube command",
+      url: linkUrl
+    });
     return;
   }
 
@@ -293,7 +351,11 @@ async function handleYouTubeLinkAction(linkUrl, variant) {
   const textToInsert = variant === "summary"
     ? buildYouTubeSummaryPrompt(cleanUrl)
     : buildYouTubePrompt(cleanUrl);
-  await runServiceAction(geminiService, textToInsert);
+  await runServiceAction(geminiService, textToInsert, {
+    actionId: variant === "summary" ? YOUTUBE_MENU_IDS.summary : YOUTUBE_MENU_IDS.article,
+    actionTitle: variant === "summary" ? "Краткое резюме YouTube-видео" : "Статья по YouTube-транскрипции",
+    url: cleanUrl
+  });
 }
 
 async function handleContextAction(action, info, tab) {
@@ -302,23 +364,47 @@ async function handleContextAction(action, info, tab) {
     : info.linkUrl || tab?.url || "";
 
   if (!sourceUrl || !/^https?:\/\//i.test(sourceUrl)) {
-    showActionStatus({ status: "unsupported_link" });
+    const result = { status: "unsupported_link" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: action.id,
+      actionTitle: action.title,
+      url: sourceUrl
+    });
     return;
   }
 
   const targetService = SERVICES_BY_ID[action.serviceId];
   if (!targetService) {
-    showActionStatus({ status: "error" });
+    const result = { status: "service_not_found" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: action.id,
+      actionTitle: action.title,
+      serviceId: action.serviceId,
+      url: sourceUrl
+    });
     return;
   }
 
   const textToInsert = buildPageOrLinkPrompt(action.contextType, action.actionType, sourceUrl, tab?.title || "");
   if (!textToInsert) {
-    showActionStatus({ status: "error" });
+    const result = { status: "command_invalid" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: action.id,
+      actionTitle: action.title,
+      service: targetService,
+      url: sourceUrl
+    });
     return;
   }
 
-  await runServiceAction(targetService, textToInsert);
+  await runServiceAction(targetService, textToInsert, {
+    actionId: action.id,
+    actionTitle: action.title,
+    url: sourceUrl
+  });
 }
 
 async function buildExtraCustomCommandContext(command, tab) {
@@ -355,12 +441,26 @@ async function buildExtraCustomCommandContext(command, tab) {
 async function handleCustomCommand(command, settings, info, tab) {
   const targetService = SERVICES_BY_ID[command.serviceId];
   if (!targetService || settings.enabledServices[targetService.id] === false) {
-    showActionStatus({ status: "error" });
+    const result = { status: targetService ? "service_disabled" : "service_not_found" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: command.id,
+      actionTitle: command.title,
+      serviceId: command.serviceId,
+      serviceTitle: targetService?.title || "",
+      url: info.pageUrl || tab?.url || ""
+    });
     return;
   }
 
   const extraContext = await buildExtraCustomCommandContext(command, tab);
   if (extraContext === null) {
+    await logDiagnosticIfNeeded({ status: "page_text_empty" }, {
+      actionId: command.id,
+      actionTitle: command.title,
+      service: targetService,
+      url: info.pageUrl || tab?.url || ""
+    });
     return;
   }
 
@@ -371,11 +471,22 @@ async function handleCustomCommand(command, settings, info, tab) {
   const textToInsert = buildCustomCommandPrompt(command, sourceContext);
 
   if (!textToInsert) {
-    showActionStatus({ status: "error" });
+    const result = { status: "command_invalid" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: command.id,
+      actionTitle: command.title,
+      service: targetService,
+      url: sourceContext.url
+    });
     return;
   }
 
-  await runServiceAction(targetService, textToInsert);
+  await runServiceAction(targetService, textToInsert, {
+    actionId: command.id,
+    actionTitle: command.title,
+    url: sourceContext.url
+  });
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -437,7 +548,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       return;
     }
 
-    await runServiceAction(defaultService, info.selectionText);
+    await runServiceAction(defaultService, info.selectionText, {
+      actionId: QUICK_DEFAULT_MENU_ID,
+      actionTitle: "Отправить в сервис по умолчанию",
+      url: info.pageUrl || tab?.url || ""
+    });
     return;
   }
 
@@ -447,7 +562,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       return;
     }
 
-    await runServiceAction(directService, info.selectionText);
+    await runServiceAction(directService, info.selectionText, {
+      actionId: directService.id,
+      actionTitle: directService.title,
+      url: info.pageUrl || tab?.url || ""
+    });
     return;
   }
 
@@ -458,10 +577,23 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   const targetService = SERVICES_BY_ID[specialAction.serviceId];
   if (!targetService || settings.enabledServices[targetService.id] === false) {
+    const result = { status: targetService ? "service_disabled" : "service_not_found" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: specialAction.id,
+      actionTitle: specialAction.title,
+      serviceId: specialAction.serviceId,
+      serviceTitle: targetService?.title || "",
+      url: info.pageUrl || tab?.url || ""
+    });
     return;
   }
 
-  await runServiceAction(targetService, specialAction.transformText(info.selectionText));
+  await runServiceAction(targetService, specialAction.transformText(info.selectionText), {
+    actionId: specialAction.id,
+    actionTitle: specialAction.title,
+    url: info.pageUrl || tab?.url || ""
+  });
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -475,7 +607,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  runServiceAction(service, message.text)
+  runServiceAction(service, message.text, {
+    actionId: "popup",
+    actionTitle: "Popup quick send",
+    url: sender?.tab?.url || ""
+  })
     .then((result) => sendResponse(result))
     .catch((error) => {
       console.warn("Popup service action failed:", error.message);
