@@ -335,12 +335,16 @@ select {
   background: #ffffff;
 }
 
-.command-actions {
+.command-actions,
+.import-export-actions {
   display: flex;
-  justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 12px;
+}
+
+.command-actions {
+  justify-content: flex-end;
 }
 
 .actions {
