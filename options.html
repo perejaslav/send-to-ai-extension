@@ -123,6 +123,17 @@
     </section>
 
     <section class="panel">
+      <h2>Диагностика</h2>
+      <p class="panel-note">Здесь отображаются последние ошибки отправки. Сам текст prompt не сохраняется.</p>
+      <div class="diagnostics-actions">
+        <button id="refreshDiagnosticsButton" type="button" class="secondary">Обновить</button>
+        <button id="clearDiagnosticsButton" type="button" class="danger">Очистить журнал</button>
+      </div>
+      <div id="diagnosticsEmpty" class="empty-state">Ошибок пока нет.</div>
+      <div id="diagnosticsList" class="diagnostics-list"></div>
+    </section>
+
+    <section class="panel">
       <h2>Импорт и экспорт</h2>
       <p class="panel-note">Экспортируй настройки в JSON, чтобы перенести сервисы, порядок меню и пользовательские команды на другой компьютер.</p>
       <div class="import-export-actions">
