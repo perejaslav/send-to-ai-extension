@@ -6,6 +6,8 @@ export function insertTextIntoPage(text, profile) {
   const intervalMs = Number(profile?.intervalMs) > 0 ? Number(profile.intervalMs) : 200;
   const timeoutMs = Number(profile?.timeoutMs) > 0 ? Number(profile.timeoutMs) : 15000;
   const usePasteFirst = Boolean(profile?.usePasteFirst);
+  const startedAt = Date.now();
+  const attemptedSelectors = [];
 
   const isEditableElement = (element) => {
     if (!element) {
@@ -26,6 +28,10 @@ export function insertTextIntoPage(text, profile) {
 
   const findInputElement = () => {
     for (const selector of selectors) {
+      if (!attemptedSelectors.includes(selector)) {
+        attemptedSelectors.push(selector);
+      }
+
       const candidate = document.querySelector(selector);
       if (!candidate) {
         continue;
@@ -151,20 +157,39 @@ export function insertTextIntoPage(text, profile) {
     return longEnough && actual.includes(head) && (tail.length < 20 || actual.includes(tail));
   };
 
+  const getElementValue = (element) => {
+    if (!element) {
+      return "";
+    }
+
+    if (element.tagName === "TEXTAREA" || element.tagName === "INPUT") {
+      return element.value || "";
+    }
+
+    return element.textContent || "";
+  };
+
   const setContentEditableValue = (element, value) => {
     element.focus();
     element.click();
     clearEditableContent(element);
 
     let inserted = false;
+    let method = "fallback-textContent";
 
     if (usePasteFirst) {
       inserted = tryPasteEvent(element, value);
+      if (inserted) {
+        method = "paste-event";
+      }
     }
 
     if (!inserted) {
       try {
         inserted = document.execCommand("insertText", false, value);
+        if (inserted) {
+          method = "execCommand-insertText";
+        }
       } catch {
         inserted = false;
       }
@@ -172,16 +197,21 @@ export function insertTextIntoPage(text, profile) {
 
     if (!inserted || !isMeaningfullyInserted(element.textContent, value)) {
       element.textContent = value;
+      method = "textContent";
     }
 
     dispatchStandardEvents(element);
     placeCursorAtEnd(element);
-    return isMeaningfullyInserted(element.textContent, value);
+
+    return {
+      inserted: isMeaningfullyInserted(element.textContent, value),
+      method
+    };
   };
 
   const tryInsert = (element, value) => {
     if (!element) {
-      return false;
+      return { inserted: false, method: "none", actualLength: 0 };
     }
 
     const isTextInput = element.tagName === "TEXTAREA" || element.tagName === "INPUT";
@@ -191,15 +221,31 @@ export function insertTextIntoPage(text, profile) {
       element.click();
       setNativeInputValue(element, value);
       dispatchStandardEvents(element);
-      return isMeaningfullyInserted(element.value, value);
+      return {
+        inserted: isMeaningfullyInserted(element.value, value),
+        method: "native-value-setter",
+        actualLength: getElementValue(element).length
+      };
     }
 
     if (isEditableElement(element)) {
-      return setContentEditableValue(element, value);
+      const result = setContentEditableValue(element, value);
+      return {
+        ...result,
+        actualLength: getElementValue(element).length
+      };
     }
 
-    return false;
+    return { inserted: false, method: "unsupported-element", actualLength: getElementValue(element).length };
   };
+
+  const buildBaseDiagnostic = () => ({
+    url: location.href || "",
+    title: document.title || "",
+    expectedLength: String(text || "").length,
+    elapsedMs: Date.now() - startedAt,
+    attemptedSelectors: [...attemptedSelectors]
+  });
 
   return new Promise((resolve) => {
     let finished = false;
@@ -226,7 +272,11 @@ export function insertTextIntoPage(text, profile) {
         observer.disconnect();
       }
 
-      resolve(result);
+      resolve({
+        ...buildBaseDiagnostic(),
+        ...result,
+        elapsedMs: Date.now() - startedAt
+      });
     };
 
     const attemptInsert = () => {
@@ -239,12 +289,14 @@ export function insertTextIntoPage(text, profile) {
         return;
       }
 
-      const inserted = tryInsert(match.element, text);
-      if (!inserted) {
+      const insertResult = tryInsert(match.element, text);
+      if (!insertResult.inserted) {
         finish({
           status: "insert_failed",
           selector: match.selector,
-          tagName: match.element.tagName.toLowerCase()
+          tagName: match.element.tagName.toLowerCase(),
+          method: insertResult.method,
+          actualLength: insertResult.actualLength
         });
         return;
       }
@@ -253,7 +305,9 @@ export function insertTextIntoPage(text, profile) {
       finish({
         status: "success",
         selector: match.selector,
-        tagName: match.element.tagName.toLowerCase()
+        tagName: match.element.tagName.toLowerCase(),
+        method: insertResult.method,
+        actualLength: insertResult.actualLength
       });
     };
 
@@ -272,7 +326,10 @@ export function insertTextIntoPage(text, profile) {
 
     waitForInput = setInterval(attemptInsert, intervalMs);
     timeoutId = setTimeout(() => {
-      finish({ status: "input_not_found" });
+      finish({
+        status: "input_not_found",
+        timeoutMs
+      });
     }, timeoutMs);
 
     attemptInsert();
