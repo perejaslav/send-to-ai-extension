@@ -151,3 +151,42 @@ test("buildMenuDescriptors respects individual Qwen context action toggles", () 
   assert.ok(!ids.includes("pageFactCheckInQwen"));
   assert.ok(!ids.includes("linkSummaryInQwen"));
 });
+
+test("buildMenuDescriptors creates custom commands submenu", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToChatGPT", "sendToQwen"],
+    enabledServices: { sendToChatGPT: true, sendToQwen: false },
+    defaultServiceId: "sendToChatGPT",
+    showSpecialActions: false,
+    showContextActionsQwen: false,
+    customCommands: [
+      {
+        id: "custom-selection",
+        title: "Custom selection",
+        enabled: true,
+        serviceId: "sendToChatGPT",
+        contextType: "selection",
+        template: "Process {selection}",
+        order: 1
+      },
+      {
+        id: "custom-disabled-service",
+        title: "Custom disabled service",
+        enabled: true,
+        serviceId: "sendToQwen",
+        contextType: "link",
+        template: "Process {url}",
+        order: 2
+      }
+    ]
+  });
+
+  const ids = descriptors.map((item) => item.id);
+  assert.ok(ids.includes("customCommands"));
+  assert.ok(ids.includes("custom-selection"));
+  assert.ok(!ids.includes("custom-disabled-service"));
+
+  const customSelection = descriptors.find((item) => item.id === "custom-selection");
+  assert.equal(customSelection.parentId, "customCommands");
+  assert.deepEqual(customSelection.contexts, ["selection"]);
+});
