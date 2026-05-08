@@ -1,3 +1,5 @@
+import { normalizeCommandProfileIds } from "./profiles.js";
+
 export const CUSTOM_COMMANDS_MENU_ID = "customCommands";
 export const CUSTOM_COMMANDS_MENU_TITLE = "Мои команды";
 
@@ -12,6 +14,7 @@ const DEFAULT_COMMAND = Object.freeze({
   contextType: "selection",
   template: "",
   menuGroup: "custom",
+  profileIds: [],
   order: 100
 });
 
@@ -90,6 +93,7 @@ export function normalizeCustomCommands(rawCommands, availableServiceIds = []) {
       contextType,
       template,
       menuGroup: toSafeString(rawCommand.menuGroup) || DEFAULT_COMMAND.menuGroup,
+      profileIds: normalizeCommandProfileIds(rawCommand.profileIds),
       order
     });
   }
