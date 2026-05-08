@@ -23,6 +23,12 @@
     </section>
 
     <section class="panel">
+      <h2>Профили команд</h2>
+      <p class="panel-note">Выбери, какие группы пользовательских команд показывать в контекстном меню. Команды без профиля видны всегда.</p>
+      <div id="activeProfilesList" class="profiles-list"></div>
+    </section>
+
+    <section class="panel">
       <div class="panel-heading">
         <div>
           <h2>Мои команды</h2>
@@ -61,6 +67,12 @@
               </select>
             </label>
           </div>
+
+          <fieldset class="profile-fieldset">
+            <legend>Профили команды</legend>
+            <p class="field-note">Профили нужны для фильтрации меню. Если ничего не выбрать, команда будет видна во всех профилях.</p>
+            <div id="customCommandProfilesList" class="profiles-list compact"></div>
+          </fieldset>
 
           <label class="service-toggle command-enabled-toggle" for="customCommandEnabled">
             <input id="customCommandEnabled" type="checkbox">
