@@ -18,9 +18,9 @@ import {
   SERVICE_CONFIGS,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS,
-  YOUTUBE_MENU_IDS,
-  YOUTUBE_MENU_TITLES
+  YOUTUBE_MENU_IDS
 } from "./services.js";
+import { normalizeYouTubeTemplates } from "./youtube-templates.js";
 
 function isServiceEnabled(settings, serviceId) {
   return settings.enabledServices[serviceId] !== false;
@@ -54,6 +54,21 @@ function buildCustomCommandDescriptors(settings) {
   }
 
   return descriptors;
+}
+
+function buildYouTubeTemplateDescriptors(settings) {
+  return normalizeYouTubeTemplates(settings.youtubeTemplates)
+    .filter((template) => template.enabled !== false && isServiceEnabled(settings, template.serviceId))
+    .map((template) => ({
+      id: YOUTUBE_MENU_IDS[template.id] || `openYouTubeTemplate:${template.id}`,
+      title: `${template.title} в ${SERVICES_BY_ID[template.serviceId]?.title || "AI"}`,
+      contexts: ["link"],
+      targetUrlPatterns: [
+        "*://*.youtube.com/*",
+        "*://youtube.com/*",
+        "*://youtu.be/*"
+      ]
+    }));
 }
 
 export function buildMenuDescriptors(settings) {
@@ -157,19 +172,7 @@ export function buildMenuDescriptors(settings) {
   }
 
   descriptors.push(...buildCustomCommandDescriptors(settings));
-
-  for (const [id, title] of Object.entries(YOUTUBE_MENU_TITLES)) {
-    descriptors.push({
-      id: YOUTUBE_MENU_IDS[id],
-      title,
-      contexts: ["link"],
-      targetUrlPatterns: [
-        "*://*.youtube.com/*",
-        "*://youtube.com/*",
-        "*://youtu.be/*"
-      ]
-    });
-  }
+  descriptors.push(...buildYouTubeTemplateDescriptors(settings));
 
   return descriptors;
 }
