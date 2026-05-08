@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "node --test && node --check background.js && node --check options.js && node --check services.js && node --check settings.js && node --check menus.js && node --check youtube.js && node --check insertion.js && node --check link-prompts.js && node --check context-prompts.js"
+    "check": "node --test && node --check background.js && node --check options.js && node --check services.js && node --check settings.js && node --check menus.js && node --check youtube.js && node --check insertion.js && node --check link-prompts.js && node --check context-prompts.js && node --check scripts/build-zip.js",
+    "build:zip": "node scripts/build-zip.js"
   }
 }
