@@ -3,6 +3,7 @@ import {
   getCustomCommandSourceContext
 } from "./custom-commands.js";
 import { insertTextIntoPage } from "./insertion.js";
+import { extractVisiblePageText } from "./page-extractor.js";
 import { buildPageOrLinkPrompt } from "./context-prompts.js";
 import { buildMenuDescriptors } from "./menus.js";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
@@ -18,6 +19,7 @@ import { buildYouTubePrompt, buildYouTubeSummaryPrompt, normalizeYouTubeUrl } fr
 
 const ACTION_DEFAULT_TITLE = "Send to AI";
 const STATUS_CLEAR_DELAY_MS = 5000;
+const PAGE_TEXT_MAX_LENGTH = 30000;
 
 function storageGet(keys) {
   return new Promise((resolve, reject) => {
@@ -117,6 +119,26 @@ function executeScript(tabId, text, profile) {
   });
 }
 
+function executePageExtraction(tabId) {
+  return new Promise((resolve, reject) => {
+    chrome.scripting.executeScript(
+      {
+        target: { tabId },
+        func: extractVisiblePageText,
+        args: [{ maxTextLength: PAGE_TEXT_MAX_LENGTH }]
+      },
+      (results) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+
+        resolve(results?.[0]?.result || { status: "empty", text: "" });
+      }
+    );
+  });
+}
+
 async function loadSettings() {
   try {
     const storedSettings = await storageGet(SETTINGS_STORAGE_KEYS);
@@ -166,6 +188,8 @@ function showActionStatus(result) {
     ? "Текст успешно вставлен"
     : result.status === "unsupported_link"
       ? "Команда доступна только для ссылок YouTube"
+      : result.status === "page_text_empty"
+      ? "Не удалось извлечь текст страницы"
       : result.status === "input_not_found"
       ? "Страница открылась, но поле ввода не найдено"
       : "Не удалось вставить текст в поле ввода";
@@ -297,6 +321,37 @@ async function handleContextAction(action, info, tab) {
   await runServiceAction(targetService, textToInsert);
 }
 
+async function buildExtraCustomCommandContext(command, tab) {
+  if (command.contextType !== "page_text") {
+    return {};
+  }
+
+  if (!tab?.id) {
+    return { pageText: "" };
+  }
+
+  try {
+    const result = await executePageExtraction(tab.id);
+    if (!result.text) {
+      showActionStatus({ status: "page_text_empty" });
+      return null;
+    }
+
+    return {
+      pageText: result.text,
+      selection: result.selection || "",
+      url: result.url || tab.url || "",
+      title: result.title || tab.title || "",
+      pageDescription: result.description || "",
+      pageTextWasTruncated: result.wasTruncated ? "true" : "false"
+    };
+  } catch (error) {
+    console.warn("Page text extraction failed:", error.message);
+    showActionStatus({ status: "page_text_empty" });
+    return null;
+  }
+}
+
 async function handleCustomCommand(command, settings, info, tab) {
   const targetService = SERVICES_BY_ID[command.serviceId];
   if (!targetService || settings.enabledServices[targetService.id] === false) {
@@ -304,7 +359,13 @@ async function handleCustomCommand(command, settings, info, tab) {
     return;
   }
 
+  const extraContext = await buildExtraCustomCommandContext(command, tab);
+  if (extraContext === null) {
+    return;
+  }
+
   const sourceContext = getCustomCommandSourceContext(command, info, tab, {
+    ...extraContext,
     service: targetService.title
   });
   const textToInsert = buildCustomCommandPrompt(command, sourceContext);
