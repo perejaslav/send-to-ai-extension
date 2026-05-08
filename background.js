@@ -14,9 +14,11 @@ import {
   CONTEXT_ACTIONS_QWEN_BY_ID,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS_BY_ID,
+  YOUTUBE_MENU_ID_PREFIX,
   YOUTUBE_MENU_IDS
 } from "./services.js";
-import { buildYouTubePrompt, buildYouTubeSummaryPrompt, normalizeYouTubeUrl } from "./youtube.js";
+import { normalizeYouTubeUrl } from "./youtube.js";
+import { getYouTubeTemplateById, renderYouTubeTemplate } from "./youtube-templates.js";
 
 const ACTION_DEFAULT_TITLE = "Send to AI";
 const STATUS_CLEAR_DELAY_MS = 5000;
@@ -334,26 +336,77 @@ async function runServiceAction(service, text, context = {}) {
   }
 }
 
-async function handleYouTubeLinkAction(linkUrl, variant) {
+function resolveYouTubeTemplateId(menuItemId) {
+  if (menuItemId === YOUTUBE_MENU_IDS.article) {
+    return "article";
+  }
+
+  if (menuItemId === YOUTUBE_MENU_IDS.summary) {
+    return "summary";
+  }
+
+  if (typeof menuItemId === "string" && menuItemId.startsWith(YOUTUBE_MENU_ID_PREFIX)) {
+    return menuItemId.slice(YOUTUBE_MENU_ID_PREFIX.length);
+  }
+
+  return null;
+}
+
+async function handleYouTubeTemplateAction(linkUrl, templateId, settings) {
   const cleanUrl = normalizeYouTubeUrl(linkUrl);
   if (!cleanUrl) {
     const result = { status: "unsupported_link" };
     showActionStatus(result);
     await logDiagnosticIfNeeded(result, {
-      actionId: variant === "summary" ? YOUTUBE_MENU_IDS.summary : YOUTUBE_MENU_IDS.article,
+      actionId: `youtube:${templateId}`,
       actionTitle: "YouTube command",
       url: linkUrl
     });
     return;
   }
 
-  const geminiService = SERVICES_BY_ID.sendToGemini;
-  const textToInsert = variant === "summary"
-    ? buildYouTubeSummaryPrompt(cleanUrl)
-    : buildYouTubePrompt(cleanUrl);
-  await runServiceAction(geminiService, textToInsert, {
-    actionId: variant === "summary" ? YOUTUBE_MENU_IDS.summary : YOUTUBE_MENU_IDS.article,
-    actionTitle: variant === "summary" ? "Краткое резюме YouTube-видео" : "Статья по YouTube-транскрипции",
+  const template = getYouTubeTemplateById(settings.youtubeTemplates, templateId);
+  if (!template || template.enabled === false) {
+    const result = { status: "command_invalid" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: `youtube:${templateId}`,
+      actionTitle: "YouTube command",
+      url: cleanUrl
+    });
+    return;
+  }
+
+  const targetService = SERVICES_BY_ID[template.serviceId];
+  if (!targetService || settings.enabledServices[targetService.id] === false) {
+    const result = { status: targetService ? "service_disabled" : "service_not_found" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: `youtube:${template.id}`,
+      actionTitle: template.title,
+      serviceId: template.serviceId,
+      serviceTitle: targetService?.title || "",
+      url: cleanUrl
+    });
+    return;
+  }
+
+  const textToInsert = renderYouTubeTemplate(template, { youtubeUrl: cleanUrl });
+  if (!textToInsert) {
+    const result = { status: "command_invalid" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, {
+      actionId: `youtube:${template.id}`,
+      actionTitle: template.title,
+      service: targetService,
+      url: cleanUrl
+    });
+    return;
+  }
+
+  await runServiceAction(targetService, textToInsert, {
+    actionId: `youtube:${template.id}`,
+    actionTitle: template.title,
     url: cleanUrl
   });
 }
@@ -524,13 +577,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
 
-  if (info.menuItemId === YOUTUBE_MENU_IDS.article) {
-    await handleYouTubeLinkAction(info.linkUrl || "", "article");
-    return;
-  }
-
-  if (info.menuItemId === YOUTUBE_MENU_IDS.summary) {
-    await handleYouTubeLinkAction(info.linkUrl || "", "summary");
+  const youtubeTemplateId = resolveYouTubeTemplateId(info.menuItemId);
+  if (youtubeTemplateId) {
+    await handleYouTubeTemplateAction(info.linkUrl || "", youtubeTemplateId, settings);
     return;
   }
 
