@@ -45,12 +45,12 @@ test("normalizeCustomCommands filters invalid commands and repairs fields", () =
   ], ["sendToChatGPT", "sendToQwen"]);
 
   assert.equal(commands.length, 2);
-  assert.equal(commands[0].id, "my-command");
+  assert.equal(commands[0].id, "my-command-2");
   assert.equal(commands[0].title, "My Command copy");
   assert.equal(commands[0].enabled, false);
   assert.equal(commands[0].contextType, "link");
   assert.deepEqual(commands[0].profileIds, []);
-  assert.equal(commands[1].id, "my-command-2");
+  assert.equal(commands[1].id, "my-command");
   assert.equal(commands[1].description, "Test command");
   assert.equal(commands[1].contextType, "selection");
   assert.equal(commands[1].template, "Hello {selection}");
