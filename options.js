@@ -123,6 +123,28 @@ function buildNewCustomCommand() {
   };
 }
 
+function validateCustomCommands() {
+  const errors = [];
+
+  state.settings.customCommands.forEach((command, index) => {
+    const label = command.title?.trim() || `Команда ${index + 1}`;
+
+    if (!command.title?.trim()) {
+      errors.push(`«${label}»: не заполнено название.`);
+    }
+
+    if (!command.template?.trim()) {
+      errors.push(`«${label}»: не заполнен prompt-шаблон.`);
+    }
+
+    if (!command.serviceId) {
+      errors.push(`«${label}»: не выбран сервис.`);
+    }
+  });
+
+  return errors;
+}
+
 function normalizeAndKeepSelection() {
   state.settings.customCommands = normalizeCustomCommands(
     state.settings.customCommands,
@@ -341,7 +363,7 @@ function renderCustomCommandsList() {
 
     const title = document.createElement("span");
     title.className = "custom-command-title";
-    title.textContent = command.title;
+    title.textContent = command.title || "Без названия";
 
     const meta = document.createElement("span");
     meta.className = "custom-command-meta";
@@ -448,18 +470,6 @@ function updateSelectedCustomCommand(patch) {
   }
 
   Object.assign(command, patch);
-  state.settings.customCommands = normalizeCustomCommands(
-    state.settings.customCommands,
-    state.settings.serviceOrder
-  );
-
-  if (patch.title && command.id.startsWith("новая-команда")) {
-    const updated = state.settings.customCommands.find((item) => item.title === patch.title);
-    if (updated) {
-      state.selectedCustomCommandId = updated.id;
-    }
-  }
-
   renderCustomCommandsList();
   renderCustomCommandForm();
 }
@@ -467,7 +477,6 @@ function updateSelectedCustomCommand(patch) {
 function addCustomCommand() {
   const command = buildNewCustomCommand();
   state.settings.customCommands.push(command);
-  normalizeAndKeepSelection();
   state.selectedCustomCommandId = command.id;
   renderCustomCommandsList();
   renderCustomCommandForm();
@@ -480,7 +489,7 @@ function deleteSelectedCustomCommand() {
     return;
   }
 
-  const confirmed = window.confirm(`Удалить команду «${command.title}»?`);
+  const confirmed = window.confirm(`Удалить команду «${command.title || "Без названия"}»?`);
   if (!confirmed) {
     return;
   }
@@ -514,6 +523,12 @@ async function handleSave() {
   setStatus("Сохранение...", false);
 
   try {
+    const errors = validateCustomCommands();
+    if (errors.length > 0) {
+      setStatus(errors[0], true);
+      return;
+    }
+
     normalizeAndKeepSelection();
     await saveSettings();
     render();
