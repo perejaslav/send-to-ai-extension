@@ -1,3 +1,7 @@
+import {
+  buildCustomCommandPrompt,
+  getCustomCommandSourceContext
+} from "./custom-commands.js";
 import { insertTextIntoPage } from "./insertion.js";
 import { buildPageOrLinkPrompt } from "./context-prompts.js";
 import { buildMenuDescriptors } from "./menus.js";
@@ -293,6 +297,26 @@ async function handleContextAction(action, info, tab) {
   await runServiceAction(targetService, textToInsert);
 }
 
+async function handleCustomCommand(command, settings, info, tab) {
+  const targetService = SERVICES_BY_ID[command.serviceId];
+  if (!targetService || settings.enabledServices[targetService.id] === false) {
+    showActionStatus({ status: "error" });
+    return;
+  }
+
+  const sourceContext = getCustomCommandSourceContext(command, info, tab, {
+    service: targetService.title
+  });
+  const textToInsert = buildCustomCommandPrompt(command, sourceContext);
+
+  if (!textToInsert) {
+    showActionStatus({ status: "error" });
+    return;
+  }
+
+  await runServiceAction(targetService, textToInsert);
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   rebuildContextMenus();
   clearActionStatus();
@@ -315,6 +339,13 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  const settings = await loadSettings();
+  const customCommand = settings.customCommands.find((command) => command.id === info.menuItemId);
+  if (customCommand) {
+    await handleCustomCommand(customCommand, settings, info, tab);
+    return;
+  }
+
   const contextAction = CONTEXT_ACTIONS_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_QWEN_BY_ID[info.menuItemId];
   if (contextAction) {
     await handleContextAction(contextAction, info, tab);
@@ -334,8 +365,6 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!info.selectionText) {
     return;
   }
-
-  const settings = await loadSettings();
 
   if (info.menuItemId === QUICK_DEFAULT_MENU_ID) {
     if (!settings.defaultServiceId) {
