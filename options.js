@@ -1,3 +1,8 @@
+import {
+  normalizeCustomCommands,
+  renderCustomCommandTemplate,
+  slugifyCommandId
+} from "./custom-commands.js";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
 import { CONTEXT_ACTIONS_QWEN, SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
 
@@ -11,8 +16,26 @@ const statusElement = document.getElementById("status");
 const showSpecialActionsElement = document.getElementById("showSpecialActions");
 const showContextActionsQwenElement = document.getElementById("showContextActionsQwen");
 
+const addCustomCommandButtonElement = document.getElementById("addCustomCommandButton");
+const customCommandsListElement = document.getElementById("customCommandsList");
+const customCommandsEmptyElement = document.getElementById("customCommandsEmpty");
+const customCommandFormElement = document.getElementById("customCommandForm");
+const customCommandFormTitleElement = document.getElementById("customCommandFormTitle");
+const customCommandTitleElement = document.getElementById("customCommandTitle");
+const customCommandDescriptionElement = document.getElementById("customCommandDescription");
+const customCommandServiceElement = document.getElementById("customCommandService");
+const customCommandContextElement = document.getElementById("customCommandContext");
+const customCommandEnabledElement = document.getElementById("customCommandEnabled");
+const customCommandTemplateElement = document.getElementById("customCommandTemplate");
+const customCommandWarningElement = document.getElementById("customCommandWarning");
+const customCommandPreviewElement = document.getElementById("customCommandPreview");
+const previewCustomCommandButtonElement = document.getElementById("previewCustomCommandButton");
+const deleteCustomCommandButtonElement = document.getElementById("deleteCustomCommandButton");
+const cancelCustomCommandButtonElement = document.getElementById("cancelCustomCommandButton");
+
 const state = {
   services: [],
+  selectedCustomCommandId: null,
   settings: {
     serviceOrder: [],
     enabledServices: {},
@@ -20,7 +43,8 @@ const state = {
     showSpecialActions: true,
     enabledSpecialActions: {},
     showContextActionsQwen: true,
-    enabledContextActionsQwen: {}
+    enabledContextActionsQwen: {},
+    customCommands: []
   }
 };
 
@@ -48,7 +72,8 @@ function saveSettings() {
       showSpecialActions: state.settings.showSpecialActions !== false,
       enabledSpecialActions: state.settings.enabledSpecialActions,
       showContextActionsQwen: state.settings.showContextActionsQwen !== false,
-      enabledContextActionsQwen: state.settings.enabledContextActionsQwen
+      enabledContextActionsQwen: state.settings.enabledContextActionsQwen,
+      customCommands: state.settings.customCommands
     }, () => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
@@ -60,7 +85,6 @@ function saveSettings() {
   });
 }
 
-
 function getServiceTitle(serviceId) {
   const service = state.services.find((item) => item.id === serviceId);
   return service ? service.title : serviceId;
@@ -69,6 +93,45 @@ function getServiceTitle(serviceId) {
 function setStatus(text, isError) {
   statusElement.textContent = text;
   statusElement.style.color = isError ? "#b91c1c" : "#166534";
+}
+
+function getSelectedCustomCommand() {
+  return state.settings.customCommands.find((command) => command.id === state.selectedCustomCommandId) || null;
+}
+
+function buildNewCustomCommand() {
+  const baseTitle = "Новая команда";
+  const usedIds = new Set(state.settings.customCommands.map((command) => command.id));
+  let id = slugifyCommandId(baseTitle);
+  let index = 2;
+
+  while (usedIds.has(id)) {
+    id = `${slugifyCommandId(baseTitle)}-${index}`;
+    index += 1;
+  }
+
+  return {
+    id,
+    title: baseTitle,
+    description: "",
+    enabled: true,
+    serviceId: state.settings.defaultServiceId || state.settings.serviceOrder[0] || SERVICE_CONFIGS[0]?.id || "",
+    contextType: "selection",
+    template: "Обработай следующий текст:\n\n{selection}",
+    menuGroup: "custom",
+    order: state.settings.customCommands.length + 100
+  };
+}
+
+function normalizeAndKeepSelection() {
+  state.settings.customCommands = normalizeCustomCommands(
+    state.settings.customCommands,
+    state.settings.serviceOrder
+  );
+
+  if (state.selectedCustomCommandId && !getSelectedCustomCommand()) {
+    state.selectedCustomCommandId = state.settings.customCommands[0]?.id || null;
+  }
 }
 
 function reorderService(draggedId, targetId, placeAfter = false) {
@@ -162,6 +225,7 @@ function renderServicesList() {
       }
 
       renderDefaultSelect();
+      renderCustomCommandForm();
     });
 
     const title = document.createElement("span");
@@ -259,11 +323,188 @@ function renderDefaultSelect() {
   defaultServiceSelectElement.disabled = enabledIds.length === 0;
 }
 
+function renderCustomCommandsList() {
+  customCommandsListElement.textContent = "";
+  customCommandsEmptyElement.hidden = state.settings.customCommands.length > 0;
+
+  for (const command of state.settings.customCommands) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "custom-command-item";
+    button.classList.toggle("is-active", command.id === state.selectedCustomCommandId);
+    button.classList.toggle("is-disabled", command.enabled === false);
+    button.addEventListener("click", () => {
+      state.selectedCustomCommandId = command.id;
+      renderCustomCommandsList();
+      renderCustomCommandForm();
+    });
+
+    const title = document.createElement("span");
+    title.className = "custom-command-title";
+    title.textContent = command.title;
+
+    const meta = document.createElement("span");
+    meta.className = "custom-command-meta";
+    meta.textContent = `${getServiceTitle(command.serviceId)} · ${getContextTitle(command.contextType)}${command.enabled === false ? " · выключена" : ""}`;
+
+    button.append(title, meta);
+    customCommandsListElement.append(button);
+  }
+}
+
+function getContextTitle(contextType) {
+  const titles = {
+    selection: "выделенный текст",
+    page: "страница",
+    link: "ссылка",
+    youtube: "YouTube",
+    page_text: "текст страницы"
+  };
+
+  return titles[contextType] || contextType;
+}
+
+function renderCustomCommandServiceOptions() {
+  customCommandServiceElement.textContent = "";
+
+  for (const serviceId of state.settings.serviceOrder) {
+    const option = document.createElement("option");
+    option.value = serviceId;
+    option.textContent = getServiceTitle(serviceId);
+    customCommandServiceElement.append(option);
+  }
+}
+
+function buildPreviewContext(command) {
+  return {
+    selection: "Пример выделенного текста для проверки команды.",
+    url: command.contextType === "link" ? "https://example.com/article" : "https://example.com/page",
+    title: "Пример заголовка страницы",
+    date: "2026-05-08",
+    service: getServiceTitle(command.serviceId),
+    pageText: "Пример извлечённого текста страницы. Полная реализация извлечения появится в следующем milestone.",
+    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  };
+}
+
+function updateCustomCommandPreview() {
+  const command = getSelectedCustomCommand();
+  if (!command) {
+    customCommandPreviewElement.textContent = "";
+    return;
+  }
+
+  customCommandPreviewElement.textContent = renderCustomCommandTemplate(command.template, buildPreviewContext(command));
+}
+
+function renderCustomCommandWarning(command) {
+  const warnings = [];
+
+  if (!command.title.trim()) {
+    warnings.push("Название команды не заполнено.");
+  }
+
+  if (!command.template.trim()) {
+    warnings.push("Prompt-шаблон не заполнен.");
+  }
+
+  if (!command.serviceId) {
+    warnings.push("Сервис не выбран.");
+  } else if (state.settings.enabledServices[command.serviceId] === false) {
+    warnings.push("Выбранный сервис сейчас отключён. Команда не появится в меню, пока сервис выключен.");
+  }
+
+  customCommandWarningElement.hidden = warnings.length === 0;
+  customCommandWarningElement.textContent = warnings.join(" ");
+}
+
+function renderCustomCommandForm() {
+  renderCustomCommandServiceOptions();
+
+  const command = getSelectedCustomCommand();
+  customCommandFormElement.hidden = !command;
+
+  if (!command) {
+    return;
+  }
+
+  customCommandFormTitleElement.textContent = command.title || "Новая команда";
+  customCommandTitleElement.value = command.title;
+  customCommandDescriptionElement.value = command.description || "";
+  customCommandServiceElement.value = command.serviceId;
+  customCommandContextElement.value = command.contextType;
+  customCommandEnabledElement.checked = command.enabled !== false;
+  customCommandTemplateElement.value = command.template;
+  deleteCustomCommandButtonElement.disabled = false;
+
+  renderCustomCommandWarning(command);
+  updateCustomCommandPreview();
+}
+
+function updateSelectedCustomCommand(patch) {
+  const command = getSelectedCustomCommand();
+  if (!command) {
+    return;
+  }
+
+  Object.assign(command, patch);
+  state.settings.customCommands = normalizeCustomCommands(
+    state.settings.customCommands,
+    state.settings.serviceOrder
+  );
+
+  if (patch.title && command.id.startsWith("новая-команда")) {
+    const updated = state.settings.customCommands.find((item) => item.title === patch.title);
+    if (updated) {
+      state.selectedCustomCommandId = updated.id;
+    }
+  }
+
+  renderCustomCommandsList();
+  renderCustomCommandForm();
+}
+
+function addCustomCommand() {
+  const command = buildNewCustomCommand();
+  state.settings.customCommands.push(command);
+  normalizeAndKeepSelection();
+  state.selectedCustomCommandId = command.id;
+  renderCustomCommandsList();
+  renderCustomCommandForm();
+  setStatus('Команда добавлена. Нажми "Сохранить" для применения.', false);
+}
+
+function deleteSelectedCustomCommand() {
+  const command = getSelectedCustomCommand();
+  if (!command) {
+    return;
+  }
+
+  const confirmed = window.confirm(`Удалить команду «${command.title}»?`);
+  if (!confirmed) {
+    return;
+  }
+
+  state.settings.customCommands = state.settings.customCommands.filter((item) => item.id !== command.id);
+  state.selectedCustomCommandId = state.settings.customCommands[0]?.id || null;
+  renderCustomCommandsList();
+  renderCustomCommandForm();
+  setStatus('Команда удалена. Нажми "Сохранить" для применения.', false);
+}
+
+function closeCustomCommandForm() {
+  state.selectedCustomCommandId = null;
+  renderCustomCommandsList();
+  renderCustomCommandForm();
+}
+
 function render() {
   renderServicesList();
   renderSpecialActionsList();
   renderContextActionsQwenList();
   renderDefaultSelect();
+  renderCustomCommandsList();
+  renderCustomCommandForm();
   showSpecialActionsElement.checked = state.settings.showSpecialActions !== false;
   showContextActionsQwenElement.checked = state.settings.showContextActionsQwen !== false;
 }
@@ -273,7 +514,9 @@ async function handleSave() {
   setStatus("Сохранение...", false);
 
   try {
+    normalizeAndKeepSelection();
     await saveSettings();
+    render();
     setStatus("Настройки сохранены", false);
   } catch (error) {
     setStatus(`Ошибка: ${error.message}`, true);
@@ -284,6 +527,7 @@ async function handleSave() {
 
 function handleReset() {
   state.settings = structuredClone(DEFAULT_SETTINGS);
+  state.selectedCustomCommandId = null;
   render();
   setStatus('Настройки сброшены. Нажми "Сохранить" для применения.', false);
 }
@@ -293,6 +537,7 @@ async function init() {
     const storedSettings = await loadStoredSettings();
     state.services = SERVICE_CONFIGS.map(({ id, title }) => ({ id, title }));
     state.settings = normalizeSettings(storedSettings);
+    state.selectedCustomCommandId = state.settings.customCommands[0]?.id || null;
     render();
   } catch (error) {
     setStatus(`Ошибка инициализации: ${error.message}`, true);
@@ -311,6 +556,35 @@ showSpecialActionsElement.addEventListener("change", () => {
 showContextActionsQwenElement.addEventListener("change", () => {
   state.settings.showContextActionsQwen = showContextActionsQwenElement.checked;
   renderContextActionsQwenList();
+});
+
+addCustomCommandButtonElement.addEventListener("click", addCustomCommand);
+deleteCustomCommandButtonElement.addEventListener("click", deleteSelectedCustomCommand);
+cancelCustomCommandButtonElement.addEventListener("click", closeCustomCommandForm);
+previewCustomCommandButtonElement.addEventListener("click", updateCustomCommandPreview);
+
+customCommandTitleElement.addEventListener("input", () => {
+  updateSelectedCustomCommand({ title: customCommandTitleElement.value });
+});
+
+customCommandDescriptionElement.addEventListener("input", () => {
+  updateSelectedCustomCommand({ description: customCommandDescriptionElement.value });
+});
+
+customCommandServiceElement.addEventListener("change", () => {
+  updateSelectedCustomCommand({ serviceId: customCommandServiceElement.value });
+});
+
+customCommandContextElement.addEventListener("change", () => {
+  updateSelectedCustomCommand({ contextType: customCommandContextElement.value });
+});
+
+customCommandEnabledElement.addEventListener("change", () => {
+  updateSelectedCustomCommand({ enabled: customCommandEnabledElement.checked });
+});
+
+customCommandTemplateElement.addEventListener("input", () => {
+  updateSelectedCustomCommand({ template: customCommandTemplateElement.value });
 });
 
 saveButtonElement.addEventListener("click", handleSave);
