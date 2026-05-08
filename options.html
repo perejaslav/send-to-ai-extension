@@ -5,11 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Send to AI - Настройки</title>
   <link rel="stylesheet" href="options.css">
+  <link rel="stylesheet" href="options-theme.css">
 </head>
 <body>
   <main class="container">
     <h1>Настройки Send to AI</h1>
     <p class="lead">Включай или отключай сервисы, меняй порядок, управляй специальными командами и создавай свои prompt-команды для контекстного меню.</p>
+
+    <section class="panel" data-options-theme-panel>
+      <div class="theme-panel-layout">
+        <div>
+          <h2>Оформление настроек</h2>
+          <p class="panel-note">Переключай светлую и тёмную тему страницы настроек. Выбор сохраняется сразу.</p>
+        </div>
+        <button id="optionsThemeToggle" type="button" class="secondary theme-toggle-button" aria-pressed="false">Включить тёмную тему</button>
+      </div>
+    </section>
 
     <section class="panel">
       <h2>Сервисы в контекстном меню</h2>
@@ -157,6 +168,7 @@
     </div>
   </main>
 
+  <script type="module" src="options-theme.js"></script>
   <script type="module" src="options.js"></script>
   <script type="module" src="youtube-options.js"></script>
   <script type="module" src="options-ui.js"></script>

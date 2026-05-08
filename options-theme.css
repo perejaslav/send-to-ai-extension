@@ -1,0 +1,114 @@
+html[data-options-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-options-theme="dark"] body {
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+html[data-options-theme="dark"] .lead,
+html[data-options-theme="dark"] .panel-note,
+html[data-options-theme="dark"] .field-note,
+html[data-options-theme="dark"] .options-search,
+html[data-options-theme="dark"] .profile-row small,
+html[data-options-theme="dark"] .custom-command-meta,
+html[data-options-theme="dark"] .variables-help,
+html[data-options-theme="dark"] .empty-state {
+  color: #a7b0c0;
+}
+
+html[data-options-theme="dark"] .panel,
+html[data-options-theme="dark"] .options-ui-toolbar,
+html[data-options-theme="dark"] .profile-row,
+html[data-options-theme="dark"] .custom-command-form,
+html[data-options-theme="dark"] .command-preview pre,
+html[data-options-theme="dark"] .youtube-template-body pre {
+  background: #111827;
+  border-color: #334155;
+}
+
+html[data-options-theme="dark"] .service-row,
+html[data-options-theme="dark"] .special-action-row,
+html[data-options-theme="dark"] .custom-command-item,
+html[data-options-theme="dark"] .empty-state,
+html[data-options-theme="dark"] .youtube-template-item,
+html[data-options-theme="dark"] .diagnostic-item {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e5e7eb;
+}
+
+html[data-options-theme="dark"] input,
+html[data-options-theme="dark"] select,
+html[data-options-theme="dark"] textarea {
+  background: #0f172a;
+  border-color: #475569;
+  color: #e5e7eb;
+}
+
+html[data-options-theme="dark"] input::placeholder,
+html[data-options-theme="dark"] textarea::placeholder {
+  color: #7b8798;
+}
+
+html[data-options-theme="dark"] button.secondary,
+html[data-options-theme="dark"] button.icon,
+html[data-options-theme="dark"] .options-tab,
+html[data-options-theme="dark"] .drag-handle {
+  background: #1e293b;
+  border-color: #475569;
+  color: #e5e7eb;
+}
+
+html[data-options-theme="dark"] .options-tab.is-active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+html[data-options-theme="dark"] .panel.search-match {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
+}
+
+html[data-options-theme="dark"] .custom-command-item.is-active {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.22);
+}
+
+html[data-options-theme="dark"] .variables-help code {
+  background: #172554;
+  color: #bfdbfe;
+}
+
+html[data-options-theme="dark"] .command-warning {
+  background: #451a03;
+  border-color: #b45309;
+  color: #fed7aa;
+}
+
+html[data-options-theme="dark"] .status {
+  color: #86efac;
+}
+
+.theme-panel-layout {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.theme-toggle-button {
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .theme-panel-layout {
+    flex-direction: column;
+  }
+
+  .theme-toggle-button {
+    width: 100%;
+  }
+}
