@@ -4,6 +4,9 @@ import { normalizeYouTubeTemplates, renderYouTubeTemplate } from "./youtube-temp
 const youtubeTemplatesListElement = document.getElementById("youtubeTemplatesList");
 const saveButtonElement = document.getElementById("saveButton");
 const statusElement = document.getElementById("status");
+const exportSettingsButtonElement = document.getElementById("exportSettingsButton");
+const importSettingsFileElement = document.getElementById("importSettingsFile");
+const resetAllSettingsButtonElement = document.getElementById("resetAllSettingsButton");
 
 const state = {
   youtubeTemplates: []
@@ -160,6 +163,98 @@ function renderYouTubeTemplates() {
   }
 }
 
+function downloadJsonFile(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function exportSettingsWithYouTubeTemplates(event) {
+  event.preventDefault();
+  event.stopImmediatePropagation();
+
+  try {
+    await saveYouTubeTemplates(false);
+    const stored = await storageGet([
+      "serviceOrder",
+      "enabledServices",
+      "defaultServiceId",
+      "showSpecialActions",
+      "enabledSpecialActions",
+      "showContextActionsQwen",
+      "enabledContextActionsQwen",
+      "customCommands",
+      "activeProfileIds",
+      "youtubeTemplates"
+    ]);
+
+    const payload = {
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      extension: "send-to-ai-extension",
+      settings: {
+        ...stored,
+        youtubeTemplates: normalizeYouTubeTemplates(stored.youtubeTemplates)
+      }
+    };
+
+    const datePart = new Date().toISOString().slice(0, 10);
+    downloadJsonFile(`send-to-ai-settings-${datePart}.json`, payload);
+    setStatus("Настройки экспортированы в JSON", false);
+  } catch (error) {
+    setStatus(`Ошибка экспорта: ${error.message}`, true);
+  }
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")));
+    reader.addEventListener("error", () => reject(new Error("Не удалось прочитать файл")));
+    reader.readAsText(file);
+  });
+}
+
+async function importYouTubeTemplatesFromFile(file) {
+  if (!file) {
+    return;
+  }
+
+  try {
+    const text = await readFileAsText(file);
+    const payload = JSON.parse(text);
+    const importedSettings = payload.settings && typeof payload.settings === "object" ? payload.settings : payload;
+
+    if (!importedSettings.youtubeTemplates) {
+      return;
+    }
+
+    state.youtubeTemplates = normalizeYouTubeTemplates(importedSettings.youtubeTemplates);
+    await saveYouTubeTemplates(false);
+    renderYouTubeTemplates();
+  } catch {
+    // Основной обработчик импорта покажет ошибку пользователю.
+  }
+}
+
+async function resetYouTubeTemplatesAfterFullReset() {
+  setTimeout(async () => {
+    try {
+      const stored = await storageGet(["youtubeTemplates"]);
+      state.youtubeTemplates = normalizeYouTubeTemplates(stored.youtubeTemplates);
+      renderYouTubeTemplates();
+    } catch {
+      // noop
+    }
+  }, 300);
+}
+
 async function initYouTubeTemplates() {
   if (!youtubeTemplatesListElement) {
     return;
@@ -180,6 +275,20 @@ if (saveButtonElement) {
       setStatus(`Ошибка сохранения YouTube-шаблонов: ${error.message}`, true);
     });
   });
+}
+
+if (exportSettingsButtonElement) {
+  exportSettingsButtonElement.addEventListener("click", exportSettingsWithYouTubeTemplates, true);
+}
+
+if (importSettingsFileElement) {
+  importSettingsFileElement.addEventListener("change", () => {
+    importYouTubeTemplatesFromFile(importSettingsFileElement.files?.[0]);
+  }, true);
+}
+
+if (resetAllSettingsButtonElement) {
+  resetAllSettingsButtonElement.addEventListener("click", resetYouTubeTemplatesAfterFullReset);
 }
 
 initYouTubeTemplates();
