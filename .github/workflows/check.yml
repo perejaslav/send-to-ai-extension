@@ -1,0 +1,30 @@
+name: Check
+
+on:
+  push:
+    branches:
+      - main
+      - roadmap-technical-spec
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Run tests and syntax checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run project checks
+        run: npm run check
