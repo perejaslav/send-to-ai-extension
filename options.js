@@ -6,6 +6,8 @@ import {
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
 import { CONTEXT_ACTIONS_QWEN, SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
 
+const EXPORT_SCHEMA_VERSION = 1;
+
 const servicesListElement = document.getElementById("servicesList");
 const specialActionsListElement = document.getElementById("specialActionsList");
 const contextActionsQwenListElement = document.getElementById("contextActionsQwenList");
@@ -32,6 +34,11 @@ const customCommandPreviewElement = document.getElementById("customCommandPrevie
 const previewCustomCommandButtonElement = document.getElementById("previewCustomCommandButton");
 const deleteCustomCommandButtonElement = document.getElementById("deleteCustomCommandButton");
 const cancelCustomCommandButtonElement = document.getElementById("cancelCustomCommandButton");
+
+const exportSettingsButtonElement = document.getElementById("exportSettingsButton");
+const importSettingsButtonElement = document.getElementById("importSettingsButton");
+const resetAllSettingsButtonElement = document.getElementById("resetAllSettingsButton");
+const importSettingsFileElement = document.getElementById("importSettingsFile");
 
 const state = {
   services: [],
@@ -507,6 +514,106 @@ function closeCustomCommandForm() {
   renderCustomCommandForm();
 }
 
+function createExportPayload() {
+  return {
+    schemaVersion: EXPORT_SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    extension: "send-to-ai-extension",
+    settings: {
+      serviceOrder: state.settings.serviceOrder,
+      enabledServices: state.settings.enabledServices,
+      defaultServiceId: state.settings.defaultServiceId,
+      showSpecialActions: state.settings.showSpecialActions !== false,
+      enabledSpecialActions: state.settings.enabledSpecialActions,
+      showContextActionsQwen: state.settings.showContextActionsQwen !== false,
+      enabledContextActionsQwen: state.settings.enabledContextActionsQwen,
+      customCommands: state.settings.customCommands
+    }
+  };
+}
+
+function downloadJsonFile(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportSettings() {
+  const payload = createExportPayload();
+  const datePart = new Date().toISOString().slice(0, 10);
+  downloadJsonFile(`send-to-ai-settings-${datePart}.json`, payload);
+  setStatus("Настройки экспортированы в JSON", false);
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")));
+    reader.addEventListener("error", () => reject(new Error("Не удалось прочитать файл")));
+    reader.readAsText(file);
+  });
+}
+
+function extractSettingsFromImportPayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Файл не похож на JSON с настройками");
+  }
+
+  if (payload.settings && typeof payload.settings === "object") {
+    return payload.settings;
+  }
+
+  return payload;
+}
+
+async function importSettingsFromFile(file) {
+  if (!file) {
+    return;
+  }
+
+  try {
+    const text = await readFileAsText(file);
+    const payload = JSON.parse(text);
+    const importedSettings = extractSettingsFromImportPayload(payload);
+    const normalizedSettings = normalizeSettings(importedSettings);
+    const confirmed = window.confirm("Импорт заменить текущие настройки расширения. Продолжить?");
+
+    if (!confirmed) {
+      setStatus("Импорт отменён", false);
+      return;
+    }
+
+    state.settings = normalizedSettings;
+    state.selectedCustomCommandId = state.settings.customCommands[0]?.id || null;
+    await saveSettings();
+    render();
+    setStatus("Настройки импортированы и сохранены", false);
+  } catch (error) {
+    setStatus(`Ошибка импорта: ${error.message}`, true);
+  } finally {
+    importSettingsFileElement.value = "";
+  }
+}
+
+async function resetAllSettings() {
+  const confirmed = window.confirm("Сбросить все настройки расширения к значениям по умолчанию?");
+  if (!confirmed) {
+    return;
+  }
+
+  state.settings = structuredClone(DEFAULT_SETTINGS);
+  state.selectedCustomCommandId = null;
+  await saveSettings();
+  render();
+  setStatus("Все настройки сброшены и сохранены", false);
+}
+
 function render() {
   renderServicesList();
   renderSpecialActionsList();
@@ -600,6 +707,13 @@ customCommandEnabledElement.addEventListener("change", () => {
 
 customCommandTemplateElement.addEventListener("input", () => {
   updateSelectedCustomCommand({ template: customCommandTemplateElement.value });
+});
+
+exportSettingsButtonElement.addEventListener("click", exportSettings);
+importSettingsButtonElement.addEventListener("click", () => importSettingsFileElement.click());
+importSettingsFileElement.addEventListener("change", () => importSettingsFromFile(importSettingsFileElement.files?.[0]));
+resetAllSettingsButtonElement.addEventListener("click", () => {
+  resetAllSettings().catch((error) => setStatus(`Ошибка сброса: ${error.message}`, true));
 });
 
 saveButtonElement.addEventListener("click", handleSave);
