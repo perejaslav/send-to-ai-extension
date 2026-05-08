@@ -4,6 +4,11 @@ import {
   slugifyCommandId
 } from "./custom-commands.js";
 import {
+  clearDiagnosticsLog,
+  getDiagnosticStatusTitle,
+  readDiagnosticsLog
+} from "./diagnostics.js";
+import {
   ALL_PROFILES_ID,
   BUILT_IN_PROFILES,
   getProfileTitle,
@@ -43,6 +48,11 @@ const customCommandPreviewElement = document.getElementById("customCommandPrevie
 const previewCustomCommandButtonElement = document.getElementById("previewCustomCommandButton");
 const deleteCustomCommandButtonElement = document.getElementById("deleteCustomCommandButton");
 const cancelCustomCommandButtonElement = document.getElementById("cancelCustomCommandButton");
+
+const diagnosticsEmptyElement = document.getElementById("diagnosticsEmpty");
+const diagnosticsListElement = document.getElementById("diagnosticsList");
+const refreshDiagnosticsButtonElement = document.getElementById("refreshDiagnosticsButton");
+const clearDiagnosticsButtonElement = document.getElementById("clearDiagnosticsButton");
 
 const exportSettingsButtonElement = document.getElementById("exportSettingsButton");
 const importSettingsButtonElement = document.getElementById("importSettingsButton");
@@ -111,6 +121,15 @@ function getServiceTitle(serviceId) {
 function setStatus(text, isError) {
   statusElement.textContent = text;
   statusElement.style.color = isError ? "#b91c1c" : "#166534";
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value || "";
+  }
+
+  return date.toLocaleString("ru-RU");
 }
 
 function getSelectedCustomCommand() {
@@ -702,6 +721,62 @@ async function resetAllSettings() {
   setStatus("Все настройки сброшены и сохранены", false);
 }
 
+async function renderDiagnosticsLog() {
+  const entries = await readDiagnosticsLog();
+  diagnosticsListElement.textContent = "";
+  diagnosticsEmptyElement.hidden = entries.length > 0;
+
+  for (const entry of entries) {
+    const item = document.createElement("details");
+    item.className = "diagnostic-item";
+
+    const summary = document.createElement("summary");
+    const title = entry.serviceTitle || entry.serviceId || "Неизвестный сервис";
+    summary.textContent = `${formatDateTime(entry.timestamp)} · ${getDiagnosticStatusTitle(entry.status)} · ${title}`;
+
+    const body = document.createElement("div");
+    body.className = "diagnostic-body";
+
+    const rows = [
+      ["Сообщение", entry.message],
+      ["Команда", entry.actionTitle || entry.actionId],
+      ["URL", entry.url],
+      ["Селектор", entry.selector],
+      ["Элемент", entry.tagName],
+      ["Метод", entry.details?.method],
+      ["Время, мс", entry.details?.elapsedMs],
+      ["Ожидалось символов", entry.details?.expectedLength],
+      ["Вставлено символов", entry.details?.actualLength],
+      ["Проверенные селекторы", Array.isArray(entry.details?.attemptedSelectors) ? entry.details.attemptedSelectors.join(", ") : ""]
+    ].filter(([, value]) => value !== undefined && value !== null && String(value).length > 0);
+
+    for (const [label, value] of rows) {
+      const row = document.createElement("div");
+      row.className = "diagnostic-row";
+      const key = document.createElement("strong");
+      key.textContent = `${label}:`;
+      const text = document.createElement("span");
+      text.textContent = String(value);
+      row.append(key, text);
+      body.append(row);
+    }
+
+    item.append(summary, body);
+    diagnosticsListElement.append(item);
+  }
+}
+
+async function clearDiagnostics() {
+  const confirmed = window.confirm("Очистить журнал диагностики?");
+  if (!confirmed) {
+    return;
+  }
+
+  await clearDiagnosticsLog();
+  await renderDiagnosticsLog();
+  setStatus("Журнал диагностики очищен", false);
+}
+
 function render() {
   renderServicesList();
   renderActiveProfilesList();
@@ -712,6 +787,7 @@ function render() {
   renderCustomCommandForm();
   showSpecialActionsElement.checked = state.settings.showSpecialActions !== false;
   showContextActionsQwenElement.checked = state.settings.showContextActionsQwen !== false;
+  renderDiagnosticsLog().catch((error) => setStatus(`Ошибка диагностики: ${error.message}`, true));
 }
 
 async function handleSave() {
@@ -773,6 +849,12 @@ addCustomCommandButtonElement.addEventListener("click", addCustomCommand);
 deleteCustomCommandButtonElement.addEventListener("click", deleteSelectedCustomCommand);
 cancelCustomCommandButtonElement.addEventListener("click", closeCustomCommandForm);
 previewCustomCommandButtonElement.addEventListener("click", updateCustomCommandPreview);
+refreshDiagnosticsButtonElement.addEventListener("click", () => {
+  renderDiagnosticsLog().catch((error) => setStatus(`Ошибка диагностики: ${error.message}`, true));
+});
+clearDiagnosticsButtonElement.addEventListener("click", () => {
+  clearDiagnostics().catch((error) => setStatus(`Ошибка очистки журнала: ${error.message}`, true));
+});
 
 customCommandTitleElement.addEventListener("input", () => {
   updateSelectedCustomCommand({ title: customCommandTitleElement.value });
