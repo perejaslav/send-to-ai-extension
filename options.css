@@ -381,7 +381,8 @@ select {
   margin-bottom: 8px;
 }
 
-.command-preview pre {
+.command-preview pre,
+.youtube-template-body pre {
   min-height: 96px;
   max-height: 260px;
   overflow: auto;
@@ -391,6 +392,37 @@ select {
   border-radius: 10px;
   border: 1px solid #dbe3ef;
   background: #ffffff;
+}
+
+.youtube-templates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.youtube-template-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fbfcff;
+  overflow: hidden;
+}
+
+.youtube-template-item summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.youtube-template-body {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.youtube-template-body textarea {
+  min-height: 180px;
 }
 
 .command-actions,
