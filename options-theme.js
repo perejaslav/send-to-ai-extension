@@ -2,8 +2,21 @@ const THEME_STORAGE_KEY = "optionsTheme";
 const DARK_THEME = "dark";
 const LIGHT_THEME = "light";
 
+function hasChromeStorage() {
+  return Boolean(globalThis.chrome?.storage?.local);
+}
+
+function hasDocument() {
+  return Boolean(globalThis.document?.documentElement);
+}
+
 function getStoredTheme() {
   return new Promise((resolve) => {
+    if (!hasChromeStorage()) {
+      resolve(undefined);
+      return;
+    }
+
     chrome.storage.local.get([THEME_STORAGE_KEY], (result) => {
       resolve(result?.[THEME_STORAGE_KEY]);
     });
@@ -12,12 +25,17 @@ function getStoredTheme() {
 
 function setStoredTheme(theme) {
   return new Promise((resolve) => {
+    if (!hasChromeStorage()) {
+      resolve();
+      return;
+    }
+
     chrome.storage.local.set({ [THEME_STORAGE_KEY]: theme }, () => resolve());
   });
 }
 
 function getSystemTheme() {
-  if (window.matchMedia?.("(prefers-color-scheme: dark)")?.matches) {
+  if (globalThis.window?.matchMedia?.("(prefers-color-scheme: dark)")?.matches) {
     return DARK_THEME;
   }
 
@@ -30,8 +48,12 @@ function normalizeTheme(theme) {
 
 function applyTheme(theme) {
   const normalizedTheme = normalizeTheme(theme);
-  document.documentElement.dataset.optionsTheme = normalizedTheme;
-  document.documentElement.style.colorScheme = normalizedTheme;
+
+  if (hasDocument()) {
+    document.documentElement.dataset.optionsTheme = normalizedTheme;
+    document.documentElement.style.colorScheme = normalizedTheme;
+  }
+
   return normalizedTheme;
 }
 
@@ -47,6 +69,10 @@ function updateToggleButton(button, theme) {
 }
 
 async function initOptionsTheme() {
+  if (!globalThis.document?.getElementById) {
+    return;
+  }
+
   const button = document.getElementById("optionsThemeToggle");
   let currentTheme = applyTheme(await getStoredTheme());
   updateToggleButton(button, currentTheme);
