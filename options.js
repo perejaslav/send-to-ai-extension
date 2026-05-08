@@ -3,6 +3,13 @@ import {
   renderCustomCommandTemplate,
   slugifyCommandId
 } from "./custom-commands.js";
+import {
+  ALL_PROFILES_ID,
+  BUILT_IN_PROFILES,
+  getProfileTitle,
+  normalizeActiveProfileIds,
+  normalizeCommandProfileIds
+} from "./profiles.js";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
 import { CONTEXT_ACTIONS_QWEN, SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
 
@@ -17,6 +24,7 @@ const resetButtonElement = document.getElementById("resetButton");
 const statusElement = document.getElementById("status");
 const showSpecialActionsElement = document.getElementById("showSpecialActions");
 const showContextActionsQwenElement = document.getElementById("showContextActionsQwen");
+const activeProfilesListElement = document.getElementById("activeProfilesList");
 
 const addCustomCommandButtonElement = document.getElementById("addCustomCommandButton");
 const customCommandsListElement = document.getElementById("customCommandsList");
@@ -27,6 +35,7 @@ const customCommandTitleElement = document.getElementById("customCommandTitle");
 const customCommandDescriptionElement = document.getElementById("customCommandDescription");
 const customCommandServiceElement = document.getElementById("customCommandService");
 const customCommandContextElement = document.getElementById("customCommandContext");
+const customCommandProfilesListElement = document.getElementById("customCommandProfilesList");
 const customCommandEnabledElement = document.getElementById("customCommandEnabled");
 const customCommandTemplateElement = document.getElementById("customCommandTemplate");
 const customCommandWarningElement = document.getElementById("customCommandWarning");
@@ -51,7 +60,8 @@ const state = {
     enabledSpecialActions: {},
     showContextActionsQwen: true,
     enabledContextActionsQwen: {},
-    customCommands: []
+    customCommands: [],
+    activeProfileIds: [ALL_PROFILES_ID]
   }
 };
 
@@ -80,7 +90,8 @@ function saveSettings() {
       enabledSpecialActions: state.settings.enabledSpecialActions,
       showContextActionsQwen: state.settings.showContextActionsQwen !== false,
       enabledContextActionsQwen: state.settings.enabledContextActionsQwen,
-      customCommands: state.settings.customCommands
+      customCommands: state.settings.customCommands,
+      activeProfileIds: state.settings.activeProfileIds
     }, () => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
@@ -126,6 +137,7 @@ function buildNewCustomCommand() {
     contextType: "selection",
     template: "Обработай следующий текст:\n\n{selection}",
     menuGroup: "custom",
+    profileIds: [],
     order: state.settings.customCommands.length + 100
   };
 }
@@ -157,6 +169,7 @@ function normalizeAndKeepSelection() {
     state.settings.customCommands,
     state.settings.serviceOrder
   );
+  state.settings.activeProfileIds = normalizeActiveProfileIds(state.settings.activeProfileIds);
 
   if (state.selectedCustomCommandId && !getSelectedCustomCommand()) {
     state.selectedCustomCommandId = state.settings.customCommands[0]?.id || null;
@@ -278,6 +291,41 @@ function renderServicesList() {
   });
 }
 
+function renderActiveProfilesList() {
+  activeProfilesListElement.textContent = "";
+  const profiles = [{ id: ALL_PROFILES_ID, title: "Все профили", description: "Показывать все пользовательские команды." }, ...BUILT_IN_PROFILES];
+
+  for (const profile of profiles) {
+    const label = document.createElement("label");
+    label.className = "profile-row";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = state.settings.activeProfileIds.includes(profile.id);
+    checkbox.addEventListener("change", () => {
+      if (profile.id === ALL_PROFILES_ID && checkbox.checked) {
+        state.settings.activeProfileIds = [ALL_PROFILES_ID];
+      } else {
+        const next = new Set(state.settings.activeProfileIds.filter((id) => id !== ALL_PROFILES_ID));
+        if (checkbox.checked) {
+          next.add(profile.id);
+        } else {
+          next.delete(profile.id);
+        }
+        state.settings.activeProfileIds = normalizeActiveProfileIds([...next]);
+      }
+
+      renderActiveProfilesList();
+    });
+
+    const text = document.createElement("span");
+    text.innerHTML = `<strong>${profile.title}</strong><small>${profile.description || ""}</small>`;
+
+    label.append(checkbox, text);
+    activeProfilesListElement.append(label);
+  }
+}
+
 function renderSpecialActionsList() {
   specialActionsListElement.textContent = "";
 
@@ -352,6 +400,15 @@ function renderDefaultSelect() {
   defaultServiceSelectElement.disabled = enabledIds.length === 0;
 }
 
+function getCommandProfileText(command) {
+  const profileIds = normalizeCommandProfileIds(command.profileIds);
+  if (profileIds.length === 0) {
+    return "все профили";
+  }
+
+  return profileIds.map(getProfileTitle).join(", ");
+}
+
 function renderCustomCommandsList() {
   customCommandsListElement.textContent = "";
   customCommandsEmptyElement.hidden = state.settings.customCommands.length > 0;
@@ -374,7 +431,7 @@ function renderCustomCommandsList() {
 
     const meta = document.createElement("span");
     meta.className = "custom-command-meta";
-    meta.textContent = `${getServiceTitle(command.serviceId)} · ${getContextTitle(command.contextType)}${command.enabled === false ? " · выключена" : ""}`;
+    meta.textContent = `${getServiceTitle(command.serviceId)} · ${getContextTitle(command.contextType)} · ${getCommandProfileText(command)}${command.enabled === false ? " · выключена" : ""}`;
 
     button.append(title, meta);
     customCommandsListElement.append(button);
@@ -401,6 +458,35 @@ function renderCustomCommandServiceOptions() {
     option.value = serviceId;
     option.textContent = getServiceTitle(serviceId);
     customCommandServiceElement.append(option);
+  }
+}
+
+function renderCustomCommandProfiles(command) {
+  customCommandProfilesListElement.textContent = "";
+  const selected = new Set(normalizeCommandProfileIds(command.profileIds));
+
+  for (const profile of BUILT_IN_PROFILES) {
+    const label = document.createElement("label");
+    label.className = "profile-row";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = selected.has(profile.id);
+    checkbox.addEventListener("change", () => {
+      const next = new Set(normalizeCommandProfileIds(command.profileIds));
+      if (checkbox.checked) {
+        next.add(profile.id);
+      } else {
+        next.delete(profile.id);
+      }
+      updateSelectedCustomCommand({ profileIds: [...next] });
+    });
+
+    const text = document.createElement("span");
+    text.innerHTML = `<strong>${profile.title}</strong><small>${profile.description}</small>`;
+
+    label.append(checkbox, text);
+    customCommandProfilesListElement.append(label);
   }
 }
 
@@ -466,6 +552,7 @@ function renderCustomCommandForm() {
   customCommandTemplateElement.value = command.template;
   deleteCustomCommandButtonElement.disabled = false;
 
+  renderCustomCommandProfiles(command);
   renderCustomCommandWarning(command);
   updateCustomCommandPreview();
 }
@@ -527,7 +614,8 @@ function createExportPayload() {
       enabledSpecialActions: state.settings.enabledSpecialActions,
       showContextActionsQwen: state.settings.showContextActionsQwen !== false,
       enabledContextActionsQwen: state.settings.enabledContextActionsQwen,
-      customCommands: state.settings.customCommands
+      customCommands: state.settings.customCommands,
+      activeProfileIds: state.settings.activeProfileIds
     }
   };
 }
@@ -616,6 +704,7 @@ async function resetAllSettings() {
 
 function render() {
   renderServicesList();
+  renderActiveProfilesList();
   renderSpecialActionsList();
   renderContextActionsQwenList();
   renderDefaultSelect();
