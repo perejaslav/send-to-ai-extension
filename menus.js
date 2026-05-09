@@ -19,8 +19,19 @@ import {
 } from "./services.js";
 import { normalizeYouTubeTemplates } from "./youtube-templates.js";
 
+const PRIORITY_SERVICE_IDS = ["sendToChatGPT", "sendToQwen"];
+
 function isServiceEnabled(settings, serviceId) {
   return settings.enabledServices[serviceId] !== false;
+}
+
+function getOrderedServiceIds(serviceOrder = []) {
+  const remaining = serviceOrder.filter((serviceId) => !PRIORITY_SERVICE_IDS.includes(serviceId));
+
+  return [
+    ...PRIORITY_SERVICE_IDS.filter((serviceId) => serviceOrder.includes(serviceId)),
+    ...remaining
+  ];
 }
 
 function buildCustomCommandDescriptors(settings) {
@@ -103,8 +114,9 @@ function getVisibleSpecialActionsByService(settings) {
 function buildServiceMenuDescriptors(settings) {
   const descriptors = [];
   const specialActionsByService = getVisibleSpecialActionsByService(settings);
+  const orderedServiceIds = getOrderedServiceIds(settings.serviceOrder);
 
-  for (const serviceId of settings.serviceOrder) {
+  for (const serviceId of orderedServiceIds) {
     if (!isServiceEnabled(settings, serviceId)) {
       continue;
     }
