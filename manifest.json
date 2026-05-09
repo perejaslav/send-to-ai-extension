@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Send to AI 4.1 beta 2",
+  "name": "Send to AI 4.1 beta 3",
   "version": "4.1",
-  "version_name": "4.1 beta 2",
+  "version_name": "4.1 beta 3",
   "description": "Отправить выделенный текст в AI-ассистенты (Qwen, Ernie, Minimax, Grok, Z.ai, DeepSeek, Claude, Kimi, ChatGPT, Gemini, Google AI Studio)",
   "permissions": [
     "contextMenus",
@@ -30,7 +30,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Send to AI 4.1 beta 2",
+    "default_title": "Send to AI 4.1 beta 3",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icon16.png",
