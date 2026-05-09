@@ -12,7 +12,6 @@ import {
   CONTEXT_ACTIONS_QWEN,
   CONTEXT_ACTIONS_QWEN_MENU_ID,
   CONTEXT_ACTIONS_QWEN_MENU_TITLE,
-  QUICK_DEFAULT_MENU_ID,
   SERVICE_CONFIGS,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS,
@@ -155,15 +154,6 @@ function buildServiceMenuDescriptors(settings) {
 
 export function buildMenuDescriptors(settings) {
   const descriptors = [];
-
-  const defaultService = settings.defaultServiceId ? SERVICES_BY_ID[settings.defaultServiceId] : null;
-  if (defaultService && isServiceEnabled(settings, defaultService.id)) {
-    descriptors.push({
-      id: QUICK_DEFAULT_MENU_ID,
-      title: `Отправить в ${defaultService.title} (по умолчанию)`,
-      contexts: ["selection"]
-    });
-  }
 
   descriptors.push(...buildServiceMenuDescriptors(settings));
 
