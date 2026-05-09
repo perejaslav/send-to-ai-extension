@@ -12,8 +12,8 @@ test("buildMenuDescriptors groups special actions under their services", () => {
   });
 
   const ids = descriptors.map((item) => item.id);
-  assert.ok(ids.includes("sendToAI"));
-  assert.ok(ids.includes("sendToAIDefault"));
+  assert.ok(!ids.includes("sendToAI"));
+  assert.ok(!ids.includes("sendToAIDefault"));
   assert.ok(ids.includes("sendToChatGPTMenu"));
   assert.ok(ids.includes("sendToQwenMenu"));
   assert.ok(ids.includes("sendToChatGPT"));
@@ -25,7 +25,7 @@ test("buildMenuDescriptors groups special actions under their services", () => {
   assert.ok(!ids.includes("sendToAISeparator"));
 
   const chatGptMenu = descriptors.find((item) => item.id === "sendToChatGPTMenu");
-  assert.equal(chatGptMenu.parentId, "sendToAI");
+  assert.equal(chatGptMenu.parentId, undefined);
   assert.equal(chatGptMenu.title, "ChatGPT");
 
   const chatGptDirect = descriptors.find((item) => item.id === "sendToChatGPT");
@@ -45,7 +45,7 @@ test("buildMenuDescriptors groups special actions under their services", () => {
   assert.equal(chatGptFactCheck.title, "Провести фактчекинг");
 
   const qwenMenu = descriptors.find((item) => item.id === "sendToQwenMenu");
-  assert.equal(qwenMenu.parentId, "sendToAI");
+  assert.equal(qwenMenu.parentId, undefined);
   assert.equal(qwenMenu.title, "Qwen AI");
 
   const qwenDirect = descriptors.find((item) => item.id === "sendToQwen");
@@ -57,6 +57,34 @@ test("buildMenuDescriptors groups special actions under their services", () => {
   assert.equal(qwenAction.title, "Перевести на русский");
 });
 
+test("buildMenuDescriptors prioritizes ChatGPT and Qwen before other services", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToGrok", "sendToGemini", "sendToQwen", "sendToChatGPT", "sendToClaude"],
+    enabledServices: {
+      sendToGrok: true,
+      sendToGemini: true,
+      sendToQwen: true,
+      sendToChatGPT: true,
+      sendToClaude: true
+    },
+    defaultServiceId: "sendToGrok",
+    showSpecialActions: true,
+    showContextActionsQwen: false
+  });
+
+  const topLevelServiceIds = descriptors
+    .filter((item) => item.contexts?.includes("selection") && !item.parentId)
+    .map((item) => item.id);
+
+  assert.deepEqual(topLevelServiceIds.slice(0, 5), [
+    "sendToChatGPTMenu",
+    "sendToQwenMenu",
+    "sendToGrok",
+    "sendToGemini",
+    "sendToClaude"
+  ]);
+});
+
 test("buildMenuDescriptors keeps services without special actions as direct items", () => {
   const descriptors = buildMenuDescriptors({
     serviceOrder: ["sendToGrok", "sendToChatGPT"],
@@ -66,7 +94,7 @@ test("buildMenuDescriptors keeps services without special actions as direct item
   });
 
   const grok = descriptors.find((item) => item.id === "sendToGrok");
-  assert.equal(grok.parentId, "sendToAI");
+  assert.equal(grok.parentId, undefined);
   assert.equal(grok.title, "Grok");
 
   const chatGpt = descriptors.find((item) => item.id === "sendToChatGPT");
@@ -93,7 +121,7 @@ test("buildMenuDescriptors omits special actions when disabled in settings", () 
   assert.ok(!ids.includes("factCheckInChatGPT"));
 
   const chatGpt = descriptors.find((item) => item.id === "sendToChatGPT");
-  assert.equal(chatGpt.parentId, "sendToAI");
+  assert.equal(chatGpt.parentId, undefined);
 });
 
 test("buildMenuDescriptors respects individual special action toggles", () => {
