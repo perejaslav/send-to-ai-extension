@@ -71,8 +71,93 @@ function buildYouTubeTemplateDescriptors(settings) {
     }));
 }
 
-export function buildMenuDescriptors(settings) {
+function getCompactSpecialActionTitle(action) {
+  const titles = {
+    sendAndTranslateToQwen: "Перевести на русский",
+    sendAndTranslateToChatGPT: "Перевести на русский",
+    summarizeInChatGPT: "Сделать саммари",
+    factCheckInChatGPT: "Провести фактчекинг"
+  };
+
+  return titles[action.id] || action.title;
+}
+
+function getVisibleSpecialActionsByService(settings) {
+  if (!settings.showSpecialActions) {
+    return new Map();
+  }
+
   const enabledSpecialActions = settings.enabledSpecialActions || {};
+  const groupedActions = new Map();
+
+  for (const action of SPECIAL_ACTIONS) {
+    if (!isServiceEnabled(settings, action.serviceId) || enabledSpecialActions[action.id] === false) {
+      continue;
+    }
+
+    const actions = groupedActions.get(action.serviceId) || [];
+    actions.push(action);
+    groupedActions.set(action.serviceId, actions);
+  }
+
+  return groupedActions;
+}
+
+function buildServiceMenuDescriptors(settings) {
+  const descriptors = [];
+  const specialActionsByService = getVisibleSpecialActionsByService(settings);
+
+  for (const serviceId of settings.serviceOrder) {
+    if (!isServiceEnabled(settings, serviceId)) {
+      continue;
+    }
+
+    const service = SERVICES_BY_ID[serviceId];
+    if (!service) {
+      continue;
+    }
+
+    const serviceActions = specialActionsByService.get(serviceId) || [];
+
+    if (serviceActions.length === 0) {
+      descriptors.push({
+        id: service.id,
+        parentId: ROOT_MENU_ID,
+        title: service.title,
+        contexts: ["selection"]
+      });
+      continue;
+    }
+
+    const serviceMenuId = `${service.id}Menu`;
+    descriptors.push({
+      id: serviceMenuId,
+      parentId: ROOT_MENU_ID,
+      title: service.title,
+      contexts: ["selection"]
+    });
+
+    descriptors.push({
+      id: service.id,
+      parentId: serviceMenuId,
+      title: "Отправить выделенное",
+      contexts: ["selection"]
+    });
+
+    for (const action of serviceActions) {
+      descriptors.push({
+        id: action.id,
+        parentId: serviceMenuId,
+        title: getCompactSpecialActionTitle(action),
+        contexts: ["selection"]
+      });
+    }
+  }
+
+  return descriptors;
+}
+
+export function buildMenuDescriptors(settings) {
   const descriptors = [
     {
       id: ROOT_MENU_ID,
@@ -90,47 +175,7 @@ export function buildMenuDescriptors(settings) {
     });
   }
 
-  for (const serviceId of settings.serviceOrder) {
-    if (!isServiceEnabled(settings, serviceId)) {
-      continue;
-    }
-
-    const service = SERVICES_BY_ID[serviceId];
-    if (!service) {
-      continue;
-    }
-
-    descriptors.push({
-      id: service.id,
-      parentId: ROOT_MENU_ID,
-      title: service.title,
-      contexts: ["selection"]
-    });
-  }
-
-  if (settings.showSpecialActions) {
-    const visibleSpecialActions = SPECIAL_ACTIONS.filter((action) =>
-      isServiceEnabled(settings, action.serviceId) && enabledSpecialActions[action.id] !== false
-    );
-
-    if (visibleSpecialActions.length > 0) {
-      descriptors.push({
-        id: `${ROOT_MENU_ID}Separator`,
-        parentId: ROOT_MENU_ID,
-        type: "separator",
-        contexts: ["selection"]
-      });
-
-      for (const action of visibleSpecialActions) {
-        descriptors.push({
-          id: action.id,
-          parentId: ROOT_MENU_ID,
-          title: action.title,
-          contexts: ["selection"]
-        });
-      }
-    }
-  }
+  descriptors.push(...buildServiceMenuDescriptors(settings));
 
   descriptors.push({
     id: CONTEXT_ACTIONS_MENU_ID,
