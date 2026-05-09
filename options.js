@@ -19,11 +19,12 @@ import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./se
 import { CONTEXT_ACTIONS_QWEN, SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
 
 const EXPORT_SCHEMA_VERSION = 1;
+const PINNED_SERVICE_IDS = ["sendToChatGPT", "sendToQwen"];
 
+const pinnedServicesListElement = document.getElementById("pinnedServicesList");
 const servicesListElement = document.getElementById("servicesList");
 const specialActionsListElement = document.getElementById("specialActionsList");
 const contextActionsQwenListElement = document.getElementById("contextActionsQwenList");
-const defaultServiceSelectElement = document.getElementById("defaultServiceSelect");
 const saveButtonElement = document.getElementById("saveButton");
 const resetButtonElement = document.getElementById("resetButton");
 const statusElement = document.getElementById("status");
@@ -118,6 +119,25 @@ function getServiceTitle(serviceId) {
   return service ? service.title : serviceId;
 }
 
+function getServiceById(serviceId) {
+  return state.services.find((item) => item.id === serviceId) || null;
+}
+
+function getEnabledServiceIds() {
+  return state.settings.serviceOrder.filter((serviceId) => state.settings.enabledServices[serviceId] !== false);
+}
+
+function ensureDefaultServiceCompatibility() {
+  const enabledIds = getEnabledServiceIds();
+  if (!enabledIds.includes(state.settings.defaultServiceId)) {
+    state.settings.defaultServiceId = enabledIds[0] || null;
+  }
+}
+
+function getOtherServiceIds() {
+  return state.settings.serviceOrder.filter((serviceId) => !PINNED_SERVICE_IDS.includes(serviceId));
+}
+
 function setStatus(text, isError) {
   statusElement.textContent = text;
   statusElement.style.color = isError ? "#b91c1c" : "#166534";
@@ -152,7 +172,7 @@ function buildNewCustomCommand() {
     title: baseTitle,
     description: "",
     enabled: true,
-    serviceId: state.settings.defaultServiceId || state.settings.serviceOrder[0] || SERVICE_CONFIGS[0]?.id || "",
+    serviceId: state.settings.defaultServiceId || getEnabledServiceIds()[0] || SERVICE_CONFIGS[0]?.id || "",
     contextType: "selection",
     template: "Обработай следующий текст:\n\n{selection}",
     menuGroup: "custom",
@@ -184,6 +204,7 @@ function validateCustomCommands() {
 }
 
 function normalizeAndKeepSelection() {
+  ensureDefaultServiceCompatibility();
   state.settings.customCommands = normalizeCustomCommands(
     state.settings.customCommands,
     state.settings.serviceOrder
@@ -197,6 +218,10 @@ function normalizeAndKeepSelection() {
 
 function reorderService(draggedId, targetId, placeAfter = false) {
   if (!draggedId || !targetId || draggedId === targetId) {
+    return;
+  }
+
+  if (PINNED_SERVICE_IDS.includes(draggedId) || PINNED_SERVICE_IDS.includes(targetId)) {
     return;
   }
 
@@ -218,15 +243,14 @@ function reorderService(draggedId, targetId, placeAfter = false) {
   render();
 }
 
-function renderServicesList() {
-  servicesListElement.textContent = "";
+function createServiceRow(serviceId, { pinned = false } = {}) {
+  const row = document.createElement("div");
+  row.className = "service-row";
+  row.classList.toggle("is-pinned", pinned);
+  row.draggable = !pinned;
+  row.dataset.serviceId = serviceId;
 
-  state.settings.serviceOrder.forEach((serviceId) => {
-    const row = document.createElement("div");
-    row.className = "service-row";
-    row.draggable = true;
-    row.dataset.serviceId = serviceId;
-
+  if (!pinned) {
     row.addEventListener("dragstart", (event) => {
       draggedServiceId = serviceId;
       row.classList.add("is-dragging");
@@ -270,46 +294,62 @@ function renderServicesList() {
       const placeAfter = event.clientY > bounds.top + bounds.height / 2;
       reorderService(draggedServiceId, serviceId, placeAfter);
     });
+  }
 
-    const toggleLabel = document.createElement("label");
-    toggleLabel.className = "service-toggle";
+  const toggleLabel = document.createElement("label");
+  toggleLabel.className = "service-toggle";
 
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = state.settings.enabledServices[serviceId] !== false;
-    checkbox.addEventListener("change", () => {
-      state.settings.enabledServices[serviceId] = checkbox.checked;
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = state.settings.enabledServices[serviceId] !== false;
+  checkbox.addEventListener("change", () => {
+    state.settings.enabledServices[serviceId] = checkbox.checked;
+    ensureDefaultServiceCompatibility();
+    renderCustomCommandForm();
+  });
 
-      if (!checkbox.checked && state.settings.defaultServiceId === serviceId) {
-        const nextDefaultId = state.settings.serviceOrder.find((id) => state.settings.enabledServices[id]);
-        state.settings.defaultServiceId = nextDefaultId || null;
-      }
+  const title = document.createElement("span");
+  title.textContent = getServiceTitle(serviceId);
 
-      renderDefaultSelect();
-      renderCustomCommandForm();
-    });
+  toggleLabel.append(checkbox, title);
 
-    const title = document.createElement("span");
-    title.textContent = getServiceTitle(serviceId);
+  const controls = document.createElement("div");
+  controls.className = "service-controls";
 
-    toggleLabel.append(checkbox, title);
-
-    const controls = document.createElement("div");
-    controls.className = "service-controls";
-
+  if (pinned) {
+    const badge = document.createElement("span");
+    badge.className = "service-badge";
+    badge.textContent = serviceId === "sendToChatGPT" ? "1 место" : "2 место";
+    controls.append(badge);
+  } else {
     const dragHandle = document.createElement("span");
     dragHandle.className = "drag-handle";
     dragHandle.textContent = "::";
     dragHandle.title = "Перетащи, чтобы изменить порядок";
     dragHandle.setAttribute("aria-hidden", "true");
-
     controls.append(dragHandle);
+  }
 
-    row.append(toggleLabel, controls);
-    servicesListElement.append(row);
-  });
+  row.append(toggleLabel, controls);
+  return row;
 }
 
+function renderServicesList() {
+  pinnedServicesListElement.textContent = "";
+  servicesListElement.textContent = "";
+
+  for (const serviceId of PINNED_SERVICE_IDS) {
+    if (getServiceById(serviceId)) {
+      pinnedServicesListElement.append(createServiceRow(serviceId, { pinned: true }));
+    }
+  }
+
+  for (const serviceId of getOtherServiceIds()) {
+    if (getServiceById(serviceId)) {
+      servicesListElement.append(createServiceRow(serviceId));
+    }
+  }
+}
 function renderActiveProfilesList() {
   activeProfilesListElement.textContent = "";
   const profiles = [{ id: ALL_PROFILES_ID, title: "Все профили", description: "Показывать все пользовательские команды." }, ...BUILT_IN_PROFILES];
@@ -345,10 +385,27 @@ function renderActiveProfilesList() {
   }
 }
 
-function renderSpecialActionsList() {
-  specialActionsListElement.textContent = "";
+function getCompactSpecialActionTitle(action) {
+  const titles = {
+    sendAndTranslateToQwen: "Перевести на русский",
+    sendAndTranslateToChatGPT: "Перевести на русский",
+    summarizeInChatGPT: "Сделать саммари",
+    factCheckInChatGPT: "Провести фактчекинг"
+  };
 
-  for (const action of SPECIAL_ACTIONS) {
+  return titles[action.id] || action.title;
+}
+
+function renderActionGroup(serviceId, actions) {
+  const group = document.createElement("div");
+  group.className = "action-group";
+
+  const heading = document.createElement("h3");
+  heading.className = "settings-subheading";
+  heading.textContent = getServiceTitle(serviceId);
+  group.append(heading);
+
+  for (const action of actions) {
     const row = document.createElement("label");
     row.className = "special-action-row";
     if (!state.settings.showSpecialActions) {
@@ -357,7 +414,7 @@ function renderSpecialActionsList() {
 
     const title = document.createElement("span");
     title.className = "special-action-title";
-    title.textContent = action.title;
+    title.textContent = getCompactSpecialActionTitle(action);
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -368,10 +425,22 @@ function renderSpecialActionsList() {
     });
 
     row.append(title, checkbox);
-    specialActionsListElement.append(row);
+    group.append(row);
   }
+
+  return group;
 }
 
+function renderSpecialActionsList() {
+  specialActionsListElement.textContent = "";
+
+  for (const serviceId of PINNED_SERVICE_IDS) {
+    const actions = SPECIAL_ACTIONS.filter((action) => action.serviceId === serviceId);
+    if (actions.length > 0) {
+      specialActionsListElement.append(renderActionGroup(serviceId, actions));
+    }
+  }
+}
 function renderContextActionsQwenList() {
   contextActionsQwenListElement.textContent = "";
 
@@ -397,26 +466,6 @@ function renderContextActionsQwenList() {
     row.append(title, checkbox);
     contextActionsQwenListElement.append(row);
   }
-}
-
-function renderDefaultSelect() {
-  defaultServiceSelectElement.textContent = "";
-
-  const enabledIds = state.settings.serviceOrder.filter((serviceId) => state.settings.enabledServices[serviceId]);
-  for (const serviceId of enabledIds) {
-    const option = document.createElement("option");
-    option.value = serviceId;
-    option.textContent = getServiceTitle(serviceId);
-    defaultServiceSelectElement.append(option);
-  }
-
-  const fallbackId = enabledIds[0] || "";
-  if (!enabledIds.includes(state.settings.defaultServiceId)) {
-    state.settings.defaultServiceId = fallbackId || null;
-  }
-
-  defaultServiceSelectElement.value = state.settings.defaultServiceId || "";
-  defaultServiceSelectElement.disabled = enabledIds.length === 0;
 }
 
 function getCommandProfileText(command) {
@@ -516,7 +565,7 @@ function buildPreviewContext(command) {
     title: "Пример заголовка страницы",
     date: "2026-05-08",
     service: getServiceTitle(command.serviceId),
-    pageText: "Пример извлечённого текста страницы. Полная реализация извлечения появится в следующем milestone.",
+    pageText: "Пример извлечённого текста страницы.",
     youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
   };
 }
@@ -689,7 +738,7 @@ async function importSettingsFromFile(file) {
     const payload = JSON.parse(text);
     const importedSettings = extractSettingsFromImportPayload(payload);
     const normalizedSettings = normalizeSettings(importedSettings);
-    const confirmed = window.confirm("Импорт заменить текущие настройки расширения. Продолжить?");
+    const confirmed = window.confirm("Импорт заменит текущие настройки расширения. Продолжить?");
 
     if (!confirmed) {
       setStatus("Импорт отменён", false);
@@ -697,6 +746,7 @@ async function importSettingsFromFile(file) {
     }
 
     state.settings = normalizedSettings;
+    ensureDefaultServiceCompatibility();
     state.selectedCustomCommandId = state.settings.customCommands[0]?.id || null;
     await saveSettings();
     render();
@@ -715,6 +765,7 @@ async function resetAllSettings() {
   }
 
   state.settings = structuredClone(DEFAULT_SETTINGS);
+  ensureDefaultServiceCompatibility();
   state.selectedCustomCommandId = null;
   await saveSettings();
   render();
@@ -778,11 +829,11 @@ async function clearDiagnostics() {
 }
 
 function render() {
+  ensureDefaultServiceCompatibility();
   renderServicesList();
   renderActiveProfilesList();
   renderSpecialActionsList();
   renderContextActionsQwenList();
-  renderDefaultSelect();
   renderCustomCommandsList();
   renderCustomCommandForm();
   showSpecialActionsElement.checked = state.settings.showSpecialActions !== false;
@@ -814,6 +865,7 @@ async function handleSave() {
 
 function handleReset() {
   state.settings = structuredClone(DEFAULT_SETTINGS);
+  ensureDefaultServiceCompatibility();
   state.selectedCustomCommandId = null;
   render();
   setStatus('Настройки сброшены. Нажми "Сохранить" для применения.', false);
@@ -824,16 +876,13 @@ async function init() {
     const storedSettings = await loadStoredSettings();
     state.services = SERVICE_CONFIGS.map(({ id, title }) => ({ id, title }));
     state.settings = normalizeSettings(storedSettings);
+    ensureDefaultServiceCompatibility();
     state.selectedCustomCommandId = state.settings.customCommands[0]?.id || null;
     render();
   } catch (error) {
     setStatus(`Ошибка инициализации: ${error.message}`, true);
   }
 }
-
-defaultServiceSelectElement.addEventListener("change", () => {
-  state.settings.defaultServiceId = defaultServiceSelectElement.value || null;
-});
 
 showSpecialActionsElement.addEventListener("change", () => {
   state.settings.showSpecialActions = showSpecialActionsElement.checked;
