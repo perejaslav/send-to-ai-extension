@@ -7,7 +7,7 @@ export const OPTIONS_TAB_GROUPS = [
   {
     id: "commands",
     title: "Команды",
-    headings: ["Профили команд", "Мои команды", "YouTube-шаблоны", "Специальные команды", "Страницы и ссылки в Qwen"]
+    headings: ["Профили команд", "Мои команды", "YouTube-шаблоны", "Команды сервисов", "Страницы и ссылки в Qwen"]
   },
   {
     id: "diagnostics",
