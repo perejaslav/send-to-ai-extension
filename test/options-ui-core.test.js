@@ -15,6 +15,7 @@ test("options tab groups cover expected sections", () => {
   assert.ok(OPTIONS_TAB_GROUPS.length >= 4);
   assert.equal(getOptionsTabByHeading("Сервисы в контекстном меню"), "basic");
   assert.equal(getOptionsTabByHeading("Мои команды"), "commands");
+  assert.equal(getOptionsTabByHeading("Команды сервисов"), "commands");
   assert.equal(getOptionsTabByHeading("Диагностика"), "diagnostics");
   assert.equal(getOptionsTabByHeading("Импорт и экспорт"), "data");
 });
