@@ -13,8 +13,6 @@ import {
   CONTEXT_ACTIONS_QWEN_MENU_ID,
   CONTEXT_ACTIONS_QWEN_MENU_TITLE,
   QUICK_DEFAULT_MENU_ID,
-  ROOT_MENU_ID,
-  ROOT_MENU_TITLE,
   SERVICE_CONFIGS,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS,
@@ -122,7 +120,6 @@ function buildServiceMenuDescriptors(settings) {
     if (serviceActions.length === 0) {
       descriptors.push({
         id: service.id,
-        parentId: ROOT_MENU_ID,
         title: service.title,
         contexts: ["selection"]
       });
@@ -132,7 +129,6 @@ function buildServiceMenuDescriptors(settings) {
     const serviceMenuId = `${service.id}Menu`;
     descriptors.push({
       id: serviceMenuId,
-      parentId: ROOT_MENU_ID,
       title: service.title,
       contexts: ["selection"]
     });
@@ -158,13 +154,7 @@ function buildServiceMenuDescriptors(settings) {
 }
 
 export function buildMenuDescriptors(settings) {
-  const descriptors = [
-    {
-      id: ROOT_MENU_ID,
-      title: ROOT_MENU_TITLE,
-      contexts: ["selection"]
-    }
-  ];
+  const descriptors = [];
 
   const defaultService = settings.defaultServiceId ? SERVICES_BY_ID[settings.defaultServiceId] : null;
   if (defaultService && isServiceEnabled(settings, defaultService.id)) {
