@@ -12,9 +12,6 @@ import {
   CONTEXT_ACTIONS_QWEN,
   CONTEXT_ACTIONS_QWEN_MENU_ID,
   CONTEXT_ACTIONS_QWEN_MENU_TITLE,
-  QUICK_DEFAULT_MENU_ID,
-  ROOT_MENU_ID,
-  ROOT_MENU_TITLE,
   SERVICE_CONFIGS,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS,
@@ -22,8 +19,19 @@ import {
 } from "./services.js";
 import { normalizeYouTubeTemplates } from "./youtube-templates.js";
 
+const PRIORITY_SERVICE_IDS = ["sendToChatGPT", "sendToQwen"];
+
 function isServiceEnabled(settings, serviceId) {
   return settings.enabledServices[serviceId] !== false;
+}
+
+function getOrderedServiceIds(serviceOrder = []) {
+  const remaining = serviceOrder.filter((serviceId) => !PRIORITY_SERVICE_IDS.includes(serviceId));
+
+  return [
+    ...PRIORITY_SERVICE_IDS.filter((serviceId) => serviceOrder.includes(serviceId)),
+    ...remaining
+  ];
 }
 
 function buildCustomCommandDescriptors(settings) {
@@ -71,26 +79,44 @@ function buildYouTubeTemplateDescriptors(settings) {
     }));
 }
 
-export function buildMenuDescriptors(settings) {
-  const enabledSpecialActions = settings.enabledSpecialActions || {};
-  const descriptors = [
-    {
-      id: ROOT_MENU_ID,
-      title: ROOT_MENU_TITLE,
-      contexts: ["selection"]
-    }
-  ];
+function getCompactSpecialActionTitle(action) {
+  const titles = {
+    sendAndTranslateToQwen: "Перевести на русский",
+    sendAndTranslateToChatGPT: "Перевести на русский",
+    summarizeInChatGPT: "Сделать саммари",
+    factCheckInChatGPT: "Провести фактчекинг"
+  };
 
-  const defaultService = settings.defaultServiceId ? SERVICES_BY_ID[settings.defaultServiceId] : null;
-  if (defaultService && isServiceEnabled(settings, defaultService.id)) {
-    descriptors.push({
-      id: QUICK_DEFAULT_MENU_ID,
-      title: `Отправить в ${defaultService.title} (по умолчанию)`,
-      contexts: ["selection"]
-    });
+  return titles[action.id] || action.title;
+}
+
+function getVisibleSpecialActionsByService(settings) {
+  if (!settings.showSpecialActions) {
+    return new Map();
   }
 
-  for (const serviceId of settings.serviceOrder) {
+  const enabledSpecialActions = settings.enabledSpecialActions || {};
+  const groupedActions = new Map();
+
+  for (const action of SPECIAL_ACTIONS) {
+    if (!isServiceEnabled(settings, action.serviceId) || enabledSpecialActions[action.id] === false) {
+      continue;
+    }
+
+    const actions = groupedActions.get(action.serviceId) || [];
+    actions.push(action);
+    groupedActions.set(action.serviceId, actions);
+  }
+
+  return groupedActions;
+}
+
+function buildServiceMenuDescriptors(settings) {
+  const descriptors = [];
+  const specialActionsByService = getVisibleSpecialActionsByService(settings);
+  const orderedServiceIds = getOrderedServiceIds(settings.serviceOrder);
+
+  for (const serviceId of orderedServiceIds) {
     if (!isServiceEnabled(settings, serviceId)) {
       continue;
     }
@@ -100,37 +126,48 @@ export function buildMenuDescriptors(settings) {
       continue;
     }
 
+    const serviceActions = specialActionsByService.get(serviceId) || [];
+
+    if (serviceActions.length === 0) {
+      descriptors.push({
+        id: service.id,
+        title: service.title,
+        contexts: ["selection"]
+      });
+      continue;
+    }
+
+    const serviceMenuId = `${service.id}Menu`;
     descriptors.push({
-      id: service.id,
-      parentId: ROOT_MENU_ID,
+      id: serviceMenuId,
       title: service.title,
       contexts: ["selection"]
     });
-  }
 
-  if (settings.showSpecialActions) {
-    const visibleSpecialActions = SPECIAL_ACTIONS.filter((action) =>
-      isServiceEnabled(settings, action.serviceId) && enabledSpecialActions[action.id] !== false
-    );
+    descriptors.push({
+      id: service.id,
+      parentId: serviceMenuId,
+      title: "Отправить выделенное",
+      contexts: ["selection"]
+    });
 
-    if (visibleSpecialActions.length > 0) {
+    for (const action of serviceActions) {
       descriptors.push({
-        id: `${ROOT_MENU_ID}Separator`,
-        parentId: ROOT_MENU_ID,
-        type: "separator",
+        id: action.id,
+        parentId: serviceMenuId,
+        title: getCompactSpecialActionTitle(action),
         contexts: ["selection"]
       });
-
-      for (const action of visibleSpecialActions) {
-        descriptors.push({
-          id: action.id,
-          parentId: ROOT_MENU_ID,
-          title: action.title,
-          contexts: ["selection"]
-        });
-      }
     }
   }
+
+  return descriptors;
+}
+
+export function buildMenuDescriptors(settings) {
+  const descriptors = [];
+
+  descriptors.push(...buildServiceMenuDescriptors(settings));
 
   descriptors.push({
     id: CONTEXT_ACTIONS_MENU_ID,
