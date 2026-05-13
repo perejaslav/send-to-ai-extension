@@ -151,6 +151,13 @@ send-to-ai-extension/
 
 ## Changelog
 
+### v4.3
+
+- Factcheck prompts updated: replaced table format with structured bullet lists using emojis (🔹 Claim → 📌 Status → 📖 Rationale → 🔍 What to clarify → 📚 Sources)
+- Translate prompts optimized: clear rules for preserving paragraph structure, terms, numbers, names, and adapting idioms without commentary
+- ChatGPT: enabled `usePasteFirst: true` for proper multiline text insertion via paste events
+- Version bumped to 4.3
+
 ### v3.5
 
 - Added a separate **"Страницы и ссылки в Qwen"** submenu with summary, fact-checking, translation, and key points commands for the current page and links
