@@ -17,5 +17,5 @@ test("buildPageOrLinkPrompt builds factcheck prompt for links", () => {
 
   assert.match(prompt, /ссылку/);
   assert.match(prompt, /проведи фактчекинг утверждений/);
-  assert.match(prompt, /Утверждение \| Статус/);
+  assert.match(prompt, /📌 Статус/);
 });
