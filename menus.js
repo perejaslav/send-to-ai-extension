@@ -12,6 +12,9 @@ import {
   CONTEXT_ACTIONS_QWEN,
   CONTEXT_ACTIONS_QWEN_MENU_ID,
   CONTEXT_ACTIONS_QWEN_MENU_TITLE,
+  CONTEXT_ACTIONS_GROK,
+  CONTEXT_ACTIONS_GROK_MENU_ID,
+  CONTEXT_ACTIONS_GROK_MENU_TITLE,
   SERVICE_CONFIGS,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS,
@@ -19,7 +22,7 @@ import {
 } from "./services.js";
 import { normalizeYouTubeTemplates } from "./youtube-templates.js";
 
-const PRIORITY_SERVICE_IDS = ["sendToChatGPT", "sendToQwen"];
+const PRIORITY_SERVICE_IDS = ["sendToChatGPT", "sendToQwen", "sendToGrok"];
 
 function isServiceEnabled(settings, serviceId) {
   return settings.enabledServices[serviceId] !== false;
@@ -83,8 +86,11 @@ function getCompactSpecialActionTitle(action) {
   const titles = {
     sendAndTranslateToQwen: "Перевести на русский",
     sendAndTranslateToChatGPT: "Перевести на русский",
+    sendAndTranslateToGrok: "Перевести на русский",
     summarizeInChatGPT: "Сделать саммари",
-    factCheckInChatGPT: "Провести фактчекинг"
+    summarizeInGrok: "Сделать саммари",
+    factCheckInChatGPT: "Провести фактчекинг",
+    factCheckInGrok: "Провести фактчекинг"
   };
 
   return titles[action.id] || action.title;
@@ -201,6 +207,30 @@ export function buildMenuDescriptors(settings) {
         descriptors.push({
           id: action.id,
           parentId: CONTEXT_ACTIONS_QWEN_MENU_ID,
+          title: action.title,
+          contexts: [action.contextType]
+        });
+      }
+    }
+  }
+
+  if (settings.showContextActionsGrok) {
+    const enabledContextActionsGrok = settings.enabledContextActionsGrok || {};
+    const visibleContextGrok = CONTEXT_ACTIONS_GROK.filter((action) =>
+      isServiceEnabled(settings, action.serviceId) && enabledContextActionsGrok[action.id] !== false
+    );
+
+    if (visibleContextGrok.length > 0) {
+      descriptors.push({
+        id: CONTEXT_ACTIONS_GROK_MENU_ID,
+        title: CONTEXT_ACTIONS_GROK_MENU_TITLE,
+        contexts: ["page", "link"]
+      });
+
+      for (const action of visibleContextGrok) {
+        descriptors.push({
+          id: action.id,
+          parentId: CONTEXT_ACTIONS_GROK_MENU_ID,
           title: action.title,
           contexts: [action.contextType]
         });

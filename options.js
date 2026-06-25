@@ -16,20 +16,22 @@ import {
   normalizeCommandProfileIds
 } from "./profiles.js";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
-import { CONTEXT_ACTIONS_QWEN, SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
+import { CONTEXT_ACTIONS_QWEN, CONTEXT_ACTIONS_GROK, SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
 
 const EXPORT_SCHEMA_VERSION = 1;
-const PINNED_SERVICE_IDS = ["sendToChatGPT", "sendToQwen"];
+const PINNED_SERVICE_IDS = ["sendToChatGPT", "sendToQwen", "sendToGrok"];
 
 const pinnedServicesListElement = document.getElementById("pinnedServicesList");
 const servicesListElement = document.getElementById("servicesList");
 const specialActionsListElement = document.getElementById("specialActionsList");
 const contextActionsQwenListElement = document.getElementById("contextActionsQwenList");
+const contextActionsGrokListElement = document.getElementById("contextActionsGrokList");
 const saveButtonElement = document.getElementById("saveButton");
 const resetButtonElement = document.getElementById("resetButton");
 const statusElement = document.getElementById("status");
 const showSpecialActionsElement = document.getElementById("showSpecialActions");
 const showContextActionsQwenElement = document.getElementById("showContextActionsQwen");
+const showContextActionsGrokElement = document.getElementById("showContextActionsGrok");
 const activeProfilesListElement = document.getElementById("activeProfilesList");
 
 const addCustomCommandButtonElement = document.getElementById("addCustomCommandButton");
@@ -71,6 +73,8 @@ const state = {
     enabledSpecialActions: {},
     showContextActionsQwen: true,
     enabledContextActionsQwen: {},
+    showContextActionsGrok: true,
+    enabledContextActionsGrok: {},
     customCommands: [],
     activeProfileIds: [ALL_PROFILES_ID]
   }
@@ -101,6 +105,8 @@ function saveSettings() {
       enabledSpecialActions: state.settings.enabledSpecialActions,
       showContextActionsQwen: state.settings.showContextActionsQwen !== false,
       enabledContextActionsQwen: state.settings.enabledContextActionsQwen,
+      showContextActionsGrok: state.settings.showContextActionsGrok !== false,
+      enabledContextActionsGrok: state.settings.enabledContextActionsGrok,
       customCommands: state.settings.customCommands,
       activeProfileIds: state.settings.activeProfileIds
     }, () => {
@@ -389,8 +395,11 @@ function getCompactSpecialActionTitle(action) {
   const titles = {
     sendAndTranslateToQwen: "Перевести на русский",
     sendAndTranslateToChatGPT: "Перевести на русский",
+    sendAndTranslateToGrok: "Перевести на русский",
     summarizeInChatGPT: "Сделать саммари",
-    factCheckInChatGPT: "Провести фактчекинг"
+    summarizeInGrok: "Сделать саммари",
+    factCheckInChatGPT: "Провести фактчекинг",
+    factCheckInGrok: "Провести фактчекинг"
   };
 
   return titles[action.id] || action.title;
@@ -465,6 +474,33 @@ function renderContextActionsQwenList() {
 
     row.append(title, checkbox);
     contextActionsQwenListElement.append(row);
+  }
+}
+
+function renderContextActionsGrokList() {
+  contextActionsGrokListElement.textContent = "";
+
+  for (const action of CONTEXT_ACTIONS_GROK) {
+    const row = document.createElement("label");
+    row.className = "special-action-row";
+    if (!state.settings.showContextActionsGrok) {
+      row.classList.add("is-disabled");
+    }
+
+    const title = document.createElement("span");
+    title.className = "special-action-title";
+    title.textContent = action.title;
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = state.settings.enabledContextActionsGrok[action.id] !== false;
+    checkbox.disabled = !state.settings.showContextActionsGrok;
+    checkbox.addEventListener("change", () => {
+      state.settings.enabledContextActionsGrok[action.id] = checkbox.checked;
+    });
+
+    row.append(title, checkbox);
+    contextActionsGrokListElement.append(row);
   }
 }
 
@@ -834,10 +870,12 @@ function render() {
   renderActiveProfilesList();
   renderSpecialActionsList();
   renderContextActionsQwenList();
+  renderContextActionsGrokList();
   renderCustomCommandsList();
   renderCustomCommandForm();
   showSpecialActionsElement.checked = state.settings.showSpecialActions !== false;
   showContextActionsQwenElement.checked = state.settings.showContextActionsQwen !== false;
+  showContextActionsGrokElement.checked = state.settings.showContextActionsGrok !== false;
   renderDiagnosticsLog().catch((error) => setStatus(`Ошибка диагностики: ${error.message}`, true));
 }
 
@@ -892,6 +930,11 @@ showSpecialActionsElement.addEventListener("change", () => {
 showContextActionsQwenElement.addEventListener("change", () => {
   state.settings.showContextActionsQwen = showContextActionsQwenElement.checked;
   renderContextActionsQwenList();
+});
+
+showContextActionsGrokElement.addEventListener("change", () => {
+  state.settings.showContextActionsGrok = showContextActionsGrokElement.checked;
+  renderContextActionsGrokList();
 });
 
 addCustomCommandButtonElement.addEventListener("click", addCustomCommand);

@@ -151,6 +151,21 @@ send-to-ai-extension/
 
 ## Changelog
 
+### v4.4
+
+- Grok added to **pinned services** (third after ChatGPT and Qwen AI)
+- Added **special commands for selected text** in Grok:
+  - "Translate to Russian"
+  - "Make summary"
+  - "Perform factchecking"
+- Added separate submenu **"Page and link actions in Grok"** with 8 commands:
+  - For pages: summary, factchecking, translation, key points
+  - For links: summary, factchecking, translation, key points
+- Added settings section **"Grok for pages and links"** with visibility toggle and individual toggles for each command
+- Grok now displays with submenu (like ChatGPT and Qwen), not as a single item
+- Version bumped to 4.4
+- Updated menu tests for the new structure with Grok in priority services
+
 ### v4.3
 
 - Factcheck prompts updated: replaced table format with structured bullet lists using emojis (🔹 Claim → 📌 Status → 📖 Rationale → 🔍 What to clarify → 📚 Sources)

@@ -79,7 +79,7 @@ test("buildMenuDescriptors prioritizes ChatGPT and Qwen before other services", 
   assert.deepEqual(topLevelServiceIds.slice(0, 5), [
     "sendToChatGPTMenu",
     "sendToQwenMenu",
-    "sendToGrok",
+    "sendToGrokMenu",
     "sendToGemini",
     "sendToClaude"
   ]);
@@ -87,15 +87,15 @@ test("buildMenuDescriptors prioritizes ChatGPT and Qwen before other services", 
 
 test("buildMenuDescriptors keeps services without special actions as direct items", () => {
   const descriptors = buildMenuDescriptors({
-    serviceOrder: ["sendToGrok", "sendToChatGPT"],
-    enabledServices: { sendToGrok: true, sendToChatGPT: true },
-    defaultServiceId: "sendToGrok",
+    serviceOrder: ["sendToGemini", "sendToChatGPT"],
+    enabledServices: { sendToGemini: true, sendToChatGPT: true },
+    defaultServiceId: "sendToGemini",
     showSpecialActions: true
   });
 
-  const grok = descriptors.find((item) => item.id === "sendToGrok");
-  assert.equal(grok.parentId, undefined);
-  assert.equal(grok.title, "Grok");
+  const gemini = descriptors.find((item) => item.id === "sendToGemini");
+  assert.equal(gemini.parentId, undefined);
+  assert.equal(gemini.title, "Google Gemini");
 
   const chatGpt = descriptors.find((item) => item.id === "sendToChatGPT");
   assert.equal(chatGpt.parentId, "sendToChatGPTMenu");

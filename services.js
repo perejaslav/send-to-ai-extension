@@ -9,6 +9,7 @@ export const YOUTUBE_MENU_IDS = {
 };
 export const CONTEXT_ACTIONS_MENU_ID = "pageAndLinkActions";
 export const CONTEXT_ACTIONS_QWEN_MENU_ID = "pageAndLinkActionsQwen";
+export const CONTEXT_ACTIONS_GROK_MENU_ID = "pageAndLinkActionsGrok";
 export const QUICK_DEFAULT_MENU_ID = "sendToAIDefault";
 
 export const ROOT_MENU_TITLE = "Отправить в AI";
@@ -21,6 +22,7 @@ export const YOUTUBE_MENU_TITLES = {
 };
 export const CONTEXT_ACTIONS_MENU_TITLE = "Страницы и ссылки";
 export const CONTEXT_ACTIONS_QWEN_MENU_TITLE = "Страницы и ссылки в Qwen";
+export const CONTEXT_ACTIONS_GROK_MENU_TITLE = "Страницы и ссылки в Grok";
 
 export const SERVICE_CONFIGS = [
   {
@@ -299,6 +301,61 @@ export const SPECIAL_ACTIONS = [
 ---
 
 ` + selectedText
+  },
+  {
+    id: "sendAndTranslateToGrok",
+    title: "Отправить и перевести в Grok",
+    serviceId: "sendToGrok",
+    transformText: (selectedText) =>
+      "Ты - профессиональный переводчик. Переведи на русский язык с сохранением структуры абзацев и минимальной литературной обработкой.\n\nСохрани термины, числовые данные, имена и форматирование. Адаптируй идиомы и культурные отсылки. Не добавляй пояснений и комментариев от себя.\n\n" + selectedText
+  },
+  {
+    id: "summarizeInGrok",
+    title: "Сделать саммари в Grok",
+    serviceId: "sendToGrok",
+    transformText: (selectedText) =>
+      "Без вступительного текста. Сделай краткое саммари --- \n\n" + selectedText
+  },
+  {
+    id: "factCheckInGrok",
+    title: "Провести фактчекинг в Grok",
+    serviceId: "sendToGrok",
+    transformText: (selectedText) =>
+      `Проведи фактчекинг утверждений только из текста ниже.
+
+Требования к ответу:
+
+Разбей проверку на отдельные утверждения.
+Для каждого утверждения используй следующий формат:
+
+🔹 Утверждение:
+(цитата или краткий пересказ)
+
+📌 Статус:
+✅ Верно / 🟡 Частично верно / ❌ Неверно / ⚪ Недостаточно данных
+
+📖 Краткое обоснование:
+2–5 предложений без лишней воды. Только проверяемые факты и суть.
+
+🔍 Что важно уточнить:
+Какие детали требуют дополнительной проверки, контекста или конкретизации.
+
+📚 Источники/основание:
+Укажи, на каких данных или научном консенсусе основан вывод. Не выдумывай источники.
+
+Дополнительные правила:
+
+- Не пересказывай весь исходный текст.
+- Не пиши длинных вступлений и выводов.
+- Если утверждение спорное среди историков/учёных — явно укажи это.
+- Если данных недостаточно — прямо так и напиши.
+- Не объединяй несколько утверждений в одно.
+- Сохраняй максимально наглядную структуру и короткие абзацы.
+- В конце добавь краткий общий вывод о степени достоверности текста в целом (1–3 предложения).
+
+---
+
+` + selectedText
   }
 ];
 
@@ -422,7 +479,68 @@ export const CONTEXT_ACTIONS_QWEN = [
   }
 ];
 
+export const CONTEXT_ACTIONS_GROK = [
+  {
+    id: "pageSummaryInGrok",
+    title: "Саммари страницы в Grok",
+    contextType: "page",
+    actionType: "summary",
+    serviceId: "sendToGrok"
+  },
+  {
+    id: "pageFactCheckInGrok",
+    title: "Фактчекинг страницы в Grok",
+    contextType: "page",
+    actionType: "factcheck",
+    serviceId: "sendToGrok"
+  },
+  {
+    id: "pageTranslateInGrok",
+    title: "Перевести страницу в Grok",
+    contextType: "page",
+    actionType: "translate",
+    serviceId: "sendToGrok"
+  },
+  {
+    id: "pageKeyPointsInGrok",
+    title: "Тезисы страницы в Grok",
+    contextType: "page",
+    actionType: "key_points",
+    serviceId: "sendToGrok"
+  },
+  {
+    id: "linkSummaryInGrok",
+    title: "Саммари ссылки в Grok",
+    contextType: "link",
+    actionType: "summary",
+    serviceId: "sendToGrok"
+  },
+  {
+    id: "linkFactCheckInGrok",
+    title: "Фактчекинг ссылки в Grok",
+    contextType: "link",
+    actionType: "factcheck",
+    serviceId: "sendToGrok"
+  },
+  {
+    id: "linkTranslateInGrok",
+    title: "Перевести ссылку в Grok",
+    contextType: "link",
+    actionType: "translate",
+    serviceId: "sendToGrok"
+  },
+  {
+    id: "linkKeyPointsInGrok",
+    title: "Тезисы ссылки в Grok",
+    contextType: "link",
+    actionType: "key_points",
+    serviceId: "sendToGrok"
+  }
+];
+
 export const CONTEXT_ACTIONS_BY_ID = Object.fromEntries(CONTEXT_ACTIONS.map((action) => [action.id, action]));
 export const CONTEXT_ACTIONS_QWEN_BY_ID = Object.fromEntries(CONTEXT_ACTIONS_QWEN.map((action) => [action.id, action]));
+export const CONTEXT_ACTIONS_GROK_BY_ID = Object.fromEntries(CONTEXT_ACTIONS_GROK.map((action) => [action.id, action]));
 export const ALL_SERVICE_IDS = SERVICE_CONFIGS.map((service) => service.id);
 export const ALL_CONTEXT_ACTION_QWEN_IDS = CONTEXT_ACTIONS_QWEN.map((action) => action.id);
+export const ALL_CONTEXT_ACTION_GROK_IDS = CONTEXT_ACTIONS_GROK.map((action) => action.id);

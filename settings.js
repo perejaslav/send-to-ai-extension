@@ -1,6 +1,6 @@
 import { normalizeCustomCommands } from "./custom-commands.js";
 import { ALL_PROFILES_ID, normalizeActiveProfileIds } from "./profiles.js";
-import { ALL_CONTEXT_ACTION_QWEN_IDS, ALL_SERVICE_IDS, SPECIAL_ACTIONS } from "./services.js";
+import { ALL_CONTEXT_ACTION_QWEN_IDS, ALL_CONTEXT_ACTION_GROK_IDS, ALL_SERVICE_IDS, SPECIAL_ACTIONS } from "./services.js";
 import { normalizeYouTubeTemplates } from "./youtube-templates.js";
 
 export const SETTINGS_STORAGE_KEYS = [
@@ -11,6 +11,8 @@ export const SETTINGS_STORAGE_KEYS = [
   "enabledSpecialActions",
   "showContextActionsQwen",
   "enabledContextActionsQwen",
+  "showContextActionsGrok",
+  "enabledContextActionsGrok",
   "customCommands",
   "activeProfileIds",
   "youtubeTemplates"
@@ -26,6 +28,10 @@ function buildDefaultContextActionsQwen() {
   return Object.fromEntries(ALL_CONTEXT_ACTION_QWEN_IDS.map((actionId) => [actionId, true]));
 }
 
+function buildDefaultContextActionsGrok() {
+  return Object.fromEntries(ALL_CONTEXT_ACTION_GROK_IDS.map((actionId) => [actionId, true]));
+}
+
 export function buildDefaultSettings(allServiceIds = ALL_SERVICE_IDS) {
   const enabledServices = Object.fromEntries(allServiceIds.map((serviceId) => [serviceId, true]));
 
@@ -37,6 +43,8 @@ export function buildDefaultSettings(allServiceIds = ALL_SERVICE_IDS) {
     enabledSpecialActions: buildDefaultSpecialActions(),
     showContextActionsQwen: true,
     enabledContextActionsQwen: buildDefaultContextActionsQwen(),
+    showContextActionsGrok: true,
+    enabledContextActionsGrok: buildDefaultContextActionsGrok(),
     customCommands: [],
     activeProfileIds: [ALL_PROFILES_ID],
     youtubeTemplates: normalizeYouTubeTemplates()
@@ -107,6 +115,17 @@ export function normalizeSettings(rawSettings, allServiceIds = ALL_SERVICE_IDS) 
       : true;
   }
 
+  const enabledContextGrokFromStorage = source.enabledContextActionsGrok && typeof source.enabledContextActionsGrok === "object"
+    ? source.enabledContextActionsGrok
+    : {};
+
+  const normalizedContextActionsGrok = {};
+  for (const actionId of ALL_CONTEXT_ACTION_GROK_IDS) {
+    normalizedContextActionsGrok[actionId] = typeof enabledContextGrokFromStorage[actionId] === "boolean"
+      ? enabledContextGrokFromStorage[actionId]
+      : true;
+  }
+
   return {
     serviceOrder: normalizedOrder,
     enabledServices: normalizedEnabled,
@@ -115,6 +134,8 @@ export function normalizeSettings(rawSettings, allServiceIds = ALL_SERVICE_IDS) 
     enabledSpecialActions: normalizedSpecialActions,
     showContextActionsQwen: source.showContextActionsQwen !== false,
     enabledContextActionsQwen: normalizedContextActionsQwen,
+    showContextActionsGrok: source.showContextActionsGrok !== false,
+    enabledContextActionsGrok: normalizedContextActionsGrok,
     customCommands: normalizeCustomCommands(source.customCommands, allServiceIds),
     activeProfileIds: normalizeActiveProfileIds(source.activeProfileIds),
     youtubeTemplates: normalizeYouTubeTemplates(source.youtubeTemplates)
