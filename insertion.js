@@ -6,6 +6,8 @@ export function insertTextIntoPage(text, profile) {
   const intervalMs = Number(profile?.intervalMs) > 0 ? Number(profile.intervalMs) : 200;
   const timeoutMs = Number(profile?.timeoutMs) > 0 ? Number(profile.timeoutMs) : 15000;
   const usePasteFirst = Boolean(profile?.usePasteFirst);
+  const settleMs = Number(profile?.settleMs) > 0 ? Number(profile.settleMs) : 0;
+  const retryOnInsertFail = Boolean(profile?.retryOnInsertFail);
   const startedAt = Date.now();
   const attemptedSelectors = [];
 
@@ -252,6 +254,9 @@ export function insertTextIntoPage(text, profile) {
     let waitForInput = null;
     let timeoutId = null;
     let observer = null;
+    let settleId = null;
+    let lastMatch = null;
+    let lastInsertResult = null;
 
     const finish = (result) => {
       if (finished) {
@@ -272,6 +277,10 @@ export function insertTextIntoPage(text, profile) {
         observer.disconnect();
       }
 
+      if (settleId !== null) {
+        clearTimeout(settleId);
+      }
+
       resolve({
         ...buildBaseDiagnostic(),
         ...result,
@@ -284,13 +293,25 @@ export function insertTextIntoPage(text, profile) {
         return;
       }
 
+      // If a settle re-check is pending, don't start a new attempt yet.
+      if (settleId !== null) {
+        return;
+      }
+
       const match = findInputElement();
       if (!match) {
         return;
       }
 
+      lastMatch = match;
       const insertResult = tryInsert(match.element, text);
+      lastInsertResult = insertResult;
+
       if (!insertResult.inserted) {
+        if (retryOnInsertFail) {
+          return; // element not ready yet — keep polling
+        }
+
         finish({
           status: "insert_failed",
           selector: match.selector,
@@ -301,14 +322,41 @@ export function insertTextIntoPage(text, profile) {
         return;
       }
 
-      match.element.scrollIntoView({ behavior: "smooth", block: "center" });
-      finish({
-        status: "success",
-        selector: match.selector,
-        tagName: match.element.tagName.toLowerCase(),
-        method: insertResult.method,
-        actualLength: insertResult.actualLength
-      });
+      if (settleMs <= 0) {
+        match.element.scrollIntoView({ behavior: "smooth", block: "center" });
+        finish({
+          status: "success",
+          selector: match.selector,
+          tagName: match.element.tagName.toLowerCase(),
+          method: insertResult.method,
+          actualLength: insertResult.actualLength
+        });
+        return;
+      }
+
+      // Immediate check passed — wait settleMs for the framework to re-render,
+      // then re-verify the value is still present (not wiped by React).
+      settleId = setTimeout(() => {
+        settleId = null;
+        if (finished) {
+          return;
+        }
+
+        const current = getElementValue(match.element);
+        if (isMeaningfullyInserted(current, text)) {
+          match.element.scrollIntoView({ behavior: "smooth", block: "center" });
+          finish({
+            status: "success",
+            selector: match.selector,
+            tagName: match.element.tagName.toLowerCase(),
+            method: insertResult.method,
+            actualLength: current.length
+          });
+          return;
+        }
+
+        // Framework wiped the value — fall through; polling will retry on the next tick.
+      }, settleMs);
     };
 
     if (typeof MutationObserver !== "undefined") {
@@ -326,6 +374,17 @@ export function insertTextIntoPage(text, profile) {
 
     waitForInput = setInterval(attemptInsert, intervalMs);
     timeoutId = setTimeout(() => {
+      if (lastMatch && lastInsertResult) {
+        finish({
+          status: "insert_failed",
+          selector: lastMatch.selector,
+          tagName: lastMatch.element.tagName.toLowerCase(),
+          method: lastInsertResult.method,
+          actualLength: lastInsertResult.actualLength
+        });
+        return;
+      }
+
       finish({
         status: "input_not_found",
         timeoutMs

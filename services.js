@@ -44,7 +44,10 @@ export const SERVICE_CONFIGS = [
       ],
       timeoutMs: 20000,
       intervalMs: 200,
-      usePasteFirst: false
+      usePasteFirst: true,
+      delayMs: 1500,
+      settleMs: 300,
+      retryOnInsertFail: true
     }
   },
   {

@@ -288,6 +288,24 @@ function waitForTabComplete(tabId, timeoutMs = 15000) {
     };
 
     chrome.tabs.onUpdated.addListener(listener);
+
+    // Tab may already have reached "complete" before the listener was attached
+    // (e.g. fast/cached load). Check its current status to avoid the full timeout.
+    chrome.tabs.get(tabId, (tab) => {
+      if (finished) {
+        return;
+      }
+
+      if (chrome.runtime.lastError) {
+        finish();
+        return;
+      }
+
+      if (tab && tab.status === "complete") {
+        finish();
+      }
+    });
+
     setTimeout(finish, timeoutMs);
   });
 }
