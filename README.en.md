@@ -151,6 +151,11 @@ send-to-ai-extension/
 
 ## Changelog
 
+### v4.5
+
+- Completely rewritten the **"Article from YouTube transcript"** template: added "Main principle", "Requirements" and "Completeness check" sections, detailed rules for preserving all content elements (facts, reasoning, names, dates, numbers, terms, caveats and author's conclusions), a rule against collapsing long reasoning into short conclusions, and priority of completeness and accuracy over brevity
+- Version bumped to 4.5
+
 ### v4.4
 
 - Grok added to **pinned services** (third after ChatGPT and Qwen AI)
