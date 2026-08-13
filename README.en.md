@@ -212,7 +212,10 @@ Import goes through normalization: if the file contains outdated or redundant da
 - **Config-driven routing** for services and commands
 - **Service-based menu grouping** in the context menu
 - **Pinned priority for ChatGPT, Qwen AI, and Grok** in the service menu
-- **Unified text insertion pipeline** with fallback strategies, result verification, and a retry when a framework wipes the inserted text
+- **Unified text insertion pipeline** with fallback strategies and result verification:
+  - React/contenteditable services (ChatGPT, Qwen, Grok, Claude, DeepSeek, Ernie, Kimi, Minimax, StepFun) use **paste-first**: a synthetic paste event, then a wait of up to 800 ms for the framework's async commit before falling back to `execCommand`/`textContent`;
+  - repeated attempts are guarded against re-entry, and an idempotent already-present check prevents duplicate insertion into an already opened tab;
+  - after insertion the value is re-checked after `settleMs`; if the framework wipes the text, the attempt is repeated.
 - **Strict YouTube hostname validation** and URL cleanup
 - **Editable YouTube templates** with the `{youtubeUrl}` variable and service selection
 - **Custom prompt templates** with context variables
@@ -281,6 +284,7 @@ send-to-ai-extension/
 |- CHANGELOG.md
 |- CONTRIBUTING.md
 |- RELEASE.md
+|- RELEASE_CHECKLIST.md
 |- TECHNICAL_SPEC.md
 |- README.md
 |- README.en.md
@@ -292,116 +296,17 @@ send-to-ai-extension/
 - `npm run check` - run unit tests plus syntax checks for the extension modules
 - `npm run build:zip` - build a ZIP archive of the extension into the `dist/` folder
 
+## Project Documentation
+
+- `TECHNICAL_SPEC.md` - technical specification and development roadmap
+- `CHANGELOG.md` - change history
+- `CONTRIBUTING.md` - developer guide
+- `RELEASE.md` - release process guide
+- `RELEASE_CHECKLIST.md` - detailed pre-release checklist
+
 ## Changelog
 
-### v4.5
-
-- Completely rewritten the **"Article from YouTube transcript"** template: added "Main principle", "Requirements" and "Completeness check" sections, detailed rules for preserving all content elements (facts, reasoning, names, dates, numbers, terms, caveats and author's conclusions), a rule against collapsing long reasoning into short conclusions, and priority of completeness and accuracy over brevity
-- Version bumped to 4.5
-
-### v4.4.1
-
-- **Grok**: added `delayMs: 1500` — a pause after the SPA loads before insertion so the React input mounts and attaches its handlers
-- **Grok**: enabled `usePasteFirst: true` — insertion into contenteditable via paste event (like ChatGPT in v4.3), with a safe fallback to `execCommand`/`textContent`
-- **Grok**: added optional profile flags `settleMs: 300` and `retryOnInsertFail: true` — after a successful insertion the value is re-checked after 300 ms; if the framework (React) wipes the text, the attempt is repeated instead of finishing with "success"
-- **`waitForTabComplete`**: added a current tab status check via `chrome.tabs.get` — if `status === "complete"` already fired before the listener attached, the wait finishes immediately instead of hitting the 15-second timeout
-
-### v4.4
-
-- Grok added to **pinned services** (third after ChatGPT and Qwen AI)
-- Added **special commands for selected text** in Grok:
-  - "Translate to Russian"
-  - "Make summary"
-  - "Perform factchecking"
-- Added separate submenu **"Page and link actions in Grok"** with 8 commands:
-  - For pages: summary, factchecking, translation, key points
-  - For links: summary, factchecking, translation, key points
-- Added settings section **"Grok for pages and links"** with visibility toggle and individual toggles for each command
-- Grok now displays with submenu (like ChatGPT and Qwen), not as a single item
-- Version bumped to 4.4
-- Updated menu tests for the new structure with Grok in priority services
-
-### v4.3
-
-- Factcheck prompts updated: replaced table format with structured bullet lists using emojis (🔹 Claim → 📌 Status → 📖 Rationale → 🔍 What to clarify → 📚 Sources)
-- Translate prompts optimized: clear rules for preserving paragraph structure, terms, numbers, names, and adapting idioms without commentary
-- ChatGPT: enabled `usePasteFirst: true` for proper multiline text insertion via paste events
-- Version bumped to 4.3
-
-### v3.5
-
-- Added a separate **"Pages and links in Qwen"** submenu with summary, fact-checking, translation, and key points commands for the current page and links
-- Added toggles in settings to control Qwen page/link command visibility (global and per-item)
-- Updated menu and settings tests
-
-### v3.3
-
-- Added two separate YouTube menu items in Gemini: one for a detailed transcript article and one for a short summary of the main facts
-- Updated the YouTube prompt tests for both scenarios
-
-### v3.2
-
-- Replaced the YouTube prompt for Gemini: it now asks to process the video transcript into a full literary article in Russian instead of extracting key information
-- Updated the YouTube prompt regression test for the new wording
-
-### v3.1
-
-- Expanded the YouTube prompt for Gemini so it now asks for all facts, figures, statistics, dates, names, titles, causal links, practical recommendations, examples, and caveats
-- Updated the YouTube prompt regression test for the new detailed wording
-- Synced the YouTube workflow description in the docs with the new prompt
-
-### v3.0
-
-- Added a unified page/link command block for summary, fact-checking, translation, and key points
-- Moved page and link scenarios into one **Pages and links** submenu
-- Extracted prompt building for page/link actions into a shared builder
-- Added a quick popup for sending selected text to AI services
-- Popup can trigger special commands and open settings
-- Clicking the toolbar icon now opens the popup instead of the options page
-
-### v2.8
-
-- Added a new special command for selected text: **"Perform factchecking in ChatGPT"**
-- Added individual toggles for each special command in settings
-
-### v2.6
-
-- Added a context menu command for the current page: **"Make a summary of the current page in ChatGPT"**
-- Added a dedicated prompt builder for current-page summaries by URL
-- Updated the documentation for the new page-context workflow
-
-### v2.5
-
-- Added a context menu command for any link: **"Make a page summary in ChatGPT"**
-- Added a dedicated prompt builder for detailed page summaries by URL
-- Updated the documentation for the new link-summary workflow
-
-### v2.4
-
-- Tightened `host_permissions` to the exact supported service domains and added `aistudio.google.com`
-- Split `background.js` into separate modules for services, settings, menus, YouTube handling, and text insertion
-- Added toolbar badge feedback for insertion results (`OK` / `ERR`)
-- Clicking the toolbar icon now opens the settings page
-- Kept special commands in the same `Отправить в AI` submenu and made them configurable from settings
-
-### v2.3
-
-- Added an extension options page
-- Added configurable service order, enable/disable toggles, and default service selection
-- Added quick context menu item **"Send to <service> (default)"**
-- Updated extension icon set (`16/48/128`) and added explicit `action.default_icon` for toolbar rendering
-
-### v2.2
-
-- Added **Google AI Studio** (`https://aistudio.google.com/app/prompts/new_chat`) to the context menu
-- Tuned selected text insertion for the **Google AI Studio** prompt field
-- Bumped extension version to `2.2`
-
-### v2.1
-
-- Added **StepFun** (`https://stepfun.ai/chats/new`) to the context menu
-- Improved selected text insertion for StepFun
-- Bumped extension version to `2.1`
+The change history is kept in `CHANGELOG.md`.
 
 ## License
 

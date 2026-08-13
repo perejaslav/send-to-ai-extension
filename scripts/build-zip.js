@@ -11,6 +11,7 @@ const distDir = join(rootDir, "dist");
 const excludedDirectories = new Set([
   ".git",
   ".github",
+  ".commandcode",
   "node_modules",
   "dist",
   "test",
@@ -19,8 +20,7 @@ const excludedDirectories = new Set([
 
 const excludedFiles = new Set([
   ".DS_Store",
-  "TECHNICAL_SPEC.md",
-  "WORKLOG.md"
+  "TECHNICAL_SPEC.md"
 ]);
 
 const allowedExtensions = new Set([
@@ -83,7 +83,6 @@ function runCommand(command, args, options = {}) {
     const child = spawn(command, args, {
       cwd: rootDir,
       stdio: "inherit",
-      shell: process.platform === "win32",
       ...options
     });
 
@@ -141,7 +140,9 @@ Compress-Archive -Path (Join-Path $temp '*') -DestinationPath $zip -Force
 Remove-Item -Recurse -Force $temp
 `;
 
-  await runCommand("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script]);
+  const encodedCommand = Buffer.from(script, "utf16le").toString("base64");
+
+  await runCommand("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encodedCommand]);
 }
 
 async function buildZipWithSystemZip(zipPath, files) {
