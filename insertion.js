@@ -116,6 +116,20 @@ export function insertTextIntoPage(text, profile) {
     }
   };
 
+  const waitForPasteCommit = async (element, value) => {
+    const pastedAt = Date.now();
+
+    while (Date.now() - pastedAt < 800) {
+      if (isMeaningfullyInserted(element.textContent, value)) {
+        return true;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    return isMeaningfullyInserted(element.textContent, value);
+  };
+
   const clearEditableContent = (element) => {
     try {
       const selection = window.getSelection();
@@ -172,40 +186,25 @@ export function insertTextIntoPage(text, profile) {
   };
 
   const setContentEditableValue = async (element, value) => {
-    if (isMeaningfullyInserted(getElementValue(element), value)) {
-      return { inserted: true, method: "already-present", skipped: true };
-    }
-
     element.focus();
     element.click();
     clearEditableContent(element);
 
     let inserted = false;
     let method = "fallback-textContent";
-    let pasteInsertedSynchronously = false;
 
     if (usePasteFirst) {
-      const pasteInserted = tryPasteEvent(element, value);
-      pasteInsertedSynchronously = pasteInserted;
-      if (pasteInserted) {
-        method = "paste-event";
-      }
+      tryPasteEvent(element, value);
 
       // React may commit the pasted content asynchronously — give it a short
       // window before falling back to execCommand/textContent.
-      if (pasteInserted) {
-        const pastedAt = Date.now();
-        while (Date.now() - pastedAt < 800) {
-          if (isMeaningfullyInserted(element.textContent, value)) {
-            inserted = true;
-            break;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }
+      inserted = await waitForPasteCommit(element, value);
+      if (inserted) {
+        method = "paste-event";
       }
     }
 
-    if (!inserted && !pasteInsertedSynchronously) {
+    if (!inserted) {
       try {
         inserted = document.execCommand("insertText", false, value);
         if (inserted) {
@@ -233,6 +232,16 @@ export function insertTextIntoPage(text, profile) {
   const tryInsert = async (element, value) => {
     if (!element) {
       return { inserted: false, method: "none", actualLength: 0 };
+    }
+
+    const currentValue = getElementValue(element);
+
+    if (isMeaningfullyInserted(currentValue, value)) {
+      return {
+        inserted: true,
+        method: "already-present",
+        actualLength: currentValue.length
+      };
     }
 
     const isTextInput = element.tagName === "TEXTAREA" || element.tagName === "INPUT";
@@ -329,11 +338,20 @@ export function insertTextIntoPage(text, profile) {
       let insertResult;
       try {
         insertResult = await tryInsert(match.element, text);
-      } catch {
-        insertResult = { inserted: false, method: "error", actualLength: 0 };
+      } catch (error) {
+        finish({
+          status: "insert_failed",
+          selector: match.selector,
+          tagName: match.element.tagName.toLowerCase(),
+          method: "error",
+          actualLength: 0,
+          error: error && error.message ? error.message : String(error)
+        });
+        return;
+      } finally {
+        inserting = false;
       }
       lastInsertResult = insertResult;
-      inserting = false;
 
       if (!insertResult.inserted) {
         if (retryOnInsertFail) {
