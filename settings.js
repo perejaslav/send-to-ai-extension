@@ -15,8 +15,36 @@ export const SETTINGS_STORAGE_KEYS = [
   "enabledContextActionsGrok",
   "customCommands",
   "activeProfileIds",
-  "youtubeTemplates"
+  "youtubeTemplates",
+  "interactionMode",
+  "overlayMode",
+  "aiProvider"
 ];
+
+export const INTERACTION_MODES = ["legacy", "overlay"];
+export const DEFAULT_INTERACTION_MODE = "legacy";
+
+export const OVERLAY_THEMES = ["system", "light", "dark"];
+export const OVERLAY_WIDTH_MIN = 360;
+export const OVERLAY_WIDTH_MAX = 800;
+export const OVERLAY_HEIGHT_MIN = 400;
+export const OVERLAY_HEIGHT_MAX = 900;
+
+export const DEFAULT_OVERLAY_MODE = {
+  width: 460,
+  height: 620,
+  autoSend: false,
+  rememberConversation: true,
+  theme: "system"
+};
+
+export const AI_PROVIDER_TYPES = ["openai-compatible"];
+export const DEFAULT_AI_PROVIDER = {
+  type: "openai-compatible",
+  baseUrl: "",
+  model: "",
+  temperature: 0.7
+};
 
 const SPECIAL_ACTION_IDS = SPECIAL_ACTIONS.map((action) => action.id);
 
@@ -30,6 +58,67 @@ function buildDefaultContextActionsQwen() {
 
 function buildDefaultContextActionsGrok() {
   return Object.fromEntries(ALL_CONTEXT_ACTION_GROK_IDS.map((actionId) => [actionId, true]));
+}
+
+export function normalizeInteractionMode(raw) {
+  if (typeof raw === "string" && INTERACTION_MODES.includes(raw)) {
+    return raw;
+  }
+  return DEFAULT_INTERACTION_MODE;
+}
+
+function clampInt(value, min, max, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function clampFloat(value, min, max, fallback) {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, parsed));
+}
+
+export function normalizeOverlayMode(raw) {
+  if (!raw || typeof raw !== "object") {
+    return { ...DEFAULT_OVERLAY_MODE };
+  }
+
+  const width = clampInt(raw.width, OVERLAY_WIDTH_MIN, OVERLAY_WIDTH_MAX, DEFAULT_OVERLAY_MODE.width);
+  const height = clampInt(raw.height, OVERLAY_HEIGHT_MIN, OVERLAY_HEIGHT_MAX, DEFAULT_OVERLAY_MODE.height);
+  const autoSend = typeof raw.autoSend === "boolean" ? raw.autoSend : DEFAULT_OVERLAY_MODE.autoSend;
+  const rememberConversation = typeof raw.rememberConversation === "boolean" ? raw.rememberConversation : DEFAULT_OVERLAY_MODE.rememberConversation;
+  const theme = typeof raw.theme === "string" && OVERLAY_THEMES.includes(raw.theme) ? raw.theme : DEFAULT_OVERLAY_MODE.theme;
+
+  return {
+    width,
+    height,
+    autoSend,
+    rememberConversation,
+    theme
+  };
+}
+
+export function normalizeAiProvider(raw) {
+  if (!raw || typeof raw !== "object") {
+    return { ...DEFAULT_AI_PROVIDER };
+  }
+
+  const type = typeof raw.type === "string" && AI_PROVIDER_TYPES.includes(raw.type) ? raw.type : DEFAULT_AI_PROVIDER.type;
+  const baseUrl = typeof raw.baseUrl === "string" ? raw.baseUrl.trim() : DEFAULT_AI_PROVIDER.baseUrl;
+  const model = typeof raw.model === "string" ? raw.model.trim() : DEFAULT_AI_PROVIDER.model;
+  const temperature = clampFloat(raw.temperature, 0, 2, DEFAULT_AI_PROVIDER.temperature);
+
+  return {
+    type,
+    baseUrl,
+    model,
+    temperature
+  };
 }
 
 export function buildDefaultSettings(allServiceIds = ALL_SERVICE_IDS) {
@@ -47,7 +136,10 @@ export function buildDefaultSettings(allServiceIds = ALL_SERVICE_IDS) {
     enabledContextActionsGrok: buildDefaultContextActionsGrok(),
     customCommands: [],
     activeProfileIds: [ALL_PROFILES_ID],
-    youtubeTemplates: normalizeYouTubeTemplates()
+    youtubeTemplates: normalizeYouTubeTemplates(),
+    interactionMode: DEFAULT_INTERACTION_MODE,
+    overlayMode: { ...DEFAULT_OVERLAY_MODE },
+    aiProvider: { ...DEFAULT_AI_PROVIDER }
   };
 }
 
@@ -138,6 +230,9 @@ export function normalizeSettings(rawSettings, allServiceIds = ALL_SERVICE_IDS) 
     enabledContextActionsGrok: normalizedContextActionsGrok,
     customCommands: normalizeCustomCommands(source.customCommands, allServiceIds),
     activeProfileIds: normalizeActiveProfileIds(source.activeProfileIds),
-    youtubeTemplates: normalizeYouTubeTemplates(source.youtubeTemplates)
+    youtubeTemplates: normalizeYouTubeTemplates(source.youtubeTemplates),
+    interactionMode: normalizeInteractionMode(source.interactionMode),
+    overlayMode: normalizeOverlayMode(source.overlayMode),
+    aiProvider: normalizeAiProvider(source.aiProvider)
   };
 }

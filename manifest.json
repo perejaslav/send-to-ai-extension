@@ -11,6 +11,10 @@
     "activeTab",
     "storage"
   ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
   "host_permissions": [
     "https://chat.qwen.ai/*",
     "https://ernie.baidu.com/*",
