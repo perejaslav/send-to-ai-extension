@@ -1,7 +1,6 @@
-// Floating AI Overlay — Shadow DOM shell (Phase 2, no AI transport yet)
+// Floating AI Overlay — Shadow DOM (Phase 5: conversation, transport, abort, history)
 (() => {
   const HOST_ID = "send-to-ai-floating-overlay-host";
-  const STORAGE_KEY_POS = "sendToAiOverlayPos";
 
   function getHost() {
     return document.getElementById(HOST_ID);
@@ -42,9 +41,8 @@
       }
       .overlay.minimized .messages,
       .overlay.minimized .status,
-      .overlay.minimized .composer {
-        display: none;
-      }
+      .overlay.minimized .composer,
+      .overlay.minimized .toolbar { display: none; }
       @media (prefers-color-scheme: dark) {
         .overlay { background: #0f172a; color: #e2e8f0; border-color: #1e293b; }
         .header { background: #0f172a; border-color: #1e293b; }
@@ -53,6 +51,7 @@
         .composer textarea { background: #1e293b; color: #e2e8f0; border-color: #334155; }
         .msg-user { background: #1e40af; color: #ffffff; }
         .msg-assistant { background: #1e293b; color: #e2e8f0; }
+        .toolbar { background: #0f172a; border-color: #1e293b; }
       }
       .header {
         display: flex;
@@ -86,6 +85,22 @@
         display: grid; place-items: center;
       }
       .header-actions button:hover { background: #f1f5f9; }
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        padding: 6px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        background: #ffffff;
+        flex-shrink: 0;
+      }
+      .toolbar button {
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        font-size: 12px;
+        cursor: pointer;
+      }
       .messages {
         flex: 1;
         overflow-y: auto;
@@ -179,7 +194,6 @@
 
     const host = document.createElement("div");
     host.id = HOST_ID;
-    // Ensure host itself doesn't affect page layout
     host.style.all = "initial";
     host.style.position = "fixed";
     host.style.inset = "0";
@@ -221,6 +235,15 @@
     actions.append(btnMin, btnClose);
     header.append(title, actions);
 
+    // Toolbar (New chat)
+    const toolbar = document.createElement("div");
+    toolbar.className = "toolbar";
+    const btnClear = document.createElement("button");
+    btnClear.type = "button";
+    btnClear.textContent = "Новый чат";
+    btnClear.title = "Очистить историю";
+    toolbar.append(btnClear);
+
     // Messages
     const messages = document.createElement("div");
     messages.className = "messages";
@@ -241,13 +264,12 @@
     btnSend.textContent = "Send";
     composer.append(textarea, btnSend);
 
-    overlay.append(header, messages, status, composer);
+    overlay.append(header, toolbar, messages, status, composer);
     shadow.append(overlay);
 
     // Drag handling
     let dragging = false;
     let startX = 0, startY = 0, startLeft = 0, startTop = 0;
-    let hasDragged = false;
 
     function getOverlayRect() {
       return overlay.getBoundingClientRect();
@@ -256,26 +278,20 @@
     header.addEventListener("mousedown", (e) => {
       if (e.target === btnMin || e.target === btnClose) return;
       dragging = true;
-      hasDragged = false;
       const rect = getOverlayRect();
       startX = e.clientX;
       startY = e.clientY;
-      // Convert right/bottom to left/top for dragging
-      const computedLeft = rect.left;
-      const computedTop = rect.top;
-      startLeft = computedLeft;
-      startTop = computedTop;
-      // Switch to left/top positioning
+      startLeft = rect.left;
+      startTop = rect.top;
       overlay.style.right = "auto";
       overlay.style.bottom = "auto";
-      overlay.style.left = computedLeft + "px";
-      overlay.style.top = computedTop + "px";
+      overlay.style.left = startLeft + "px";
+      overlay.style.top = startTop + "px";
       e.preventDefault();
     });
 
     window.addEventListener("mousemove", (e) => {
       if (!dragging) return;
-      hasDragged = true;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
       const rect = getOverlayRect();
@@ -287,25 +303,18 @@
     window.addEventListener("mouseup", () => {
       if (dragging) {
         dragging = false;
-        // Persist position (best-effort)
         try {
           const rect = getOverlayRect();
           const pos = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
-          // Store via runtime if needed, fallback to localStorage
           chrome.storage?.local?.set?.({ sendToAiOverlayPos: pos });
         } catch {}
       }
     });
 
-    // Minimize / Close
-    btnMin.addEventListener("click", () => {
-      overlay.classList.toggle("minimized");
-    });
-    btnClose.addEventListener("click", () => {
-      host.remove();
-    });
+    btnMin.addEventListener("click", () => overlay.classList.toggle("minimized"));
+    btnClose.addEventListener("click", () => host.remove());
 
-    // Composer logic (local echo for shell phase)
+    // Message helpers
     function addMessage(role, text) {
       const div = document.createElement("div");
       div.className = "msg " + (role === "user" ? "msg-user" : role === "assistant" ? "msg-assistant" : "msg-system");
@@ -315,30 +324,101 @@
       return div;
     }
 
+    function clearMessages() {
+      messages.textContent = "";
+    }
+
     function setStatus(text, isError = false) {
       status.textContent = text;
       status.classList.toggle("error", isError);
     }
 
-    // If initial prompt provided, show it in composer and as user message preview
-    if (initialPrompt) {
-      setStatus("Готово к отправке. Нажми Send.");
+    function setTitle(text) {
+      title.textContent = text;
     }
 
-    btnSend.addEventListener("click", async () => {
-      const text = textarea.value.trim();
-      if (!text) return;
+    // Runtime helpers
+    let currentRequestId = null;
+    let isGenerating = false;
+
+    function setGenerating(generating) {
+      isGenerating = generating;
+      if (generating) {
+        btnSend.textContent = "Stop";
+        btnSend.classList.add("stop");
+        btnSend.disabled = false;
+      } else {
+        btnSend.textContent = "Send";
+        btnSend.classList.remove("stop");
+        btnSend.disabled = false;
+      }
+    }
+
+    function sendChat(prompt) {
+      if (!prompt || !prompt.trim()) return;
+      const text = prompt.trim();
       addMessage("user", text);
       textarea.value = "";
-      setStatus("Отправка... (AI transport будет в следующей фазе)");
-      btnSend.disabled = true;
-      // Simulate local echo until transport is implemented
-      setTimeout(() => {
-        addMessage("assistant", "AI transport ещё не подключён. Это shell-оверлей Phase 2. Настрой AI в следующей фазе и отправка будет работать.");
-        setStatus("");
-        btnSend.disabled = false;
-        textarea.focus();
-      }, 400);
+      setStatus("Thinking...");
+      setGenerating(true);
+      const requestId = String(Date.now()) + Math.random().toString(36).slice(2, 7);
+      currentRequestId = requestId;
+
+      chrome.runtime.sendMessage({ type: "overlay.chat.send", requestId, prompt: text }, (response) => {
+        if (chrome.runtime.lastError) {
+          setStatus(`Ошибка: ${chrome.runtime.lastError.message}`, true);
+          setGenerating(false);
+          return;
+        }
+        if (!response) {
+          setStatus("Нет ответа от background", true);
+          setGenerating(false);
+          return;
+        }
+        if (response.ok && response.text) {
+          addMessage("assistant", response.text);
+          setStatus("");
+        } else if (response.error) {
+          setStatus(response.error, true);
+        } else if (response.ok === false) {
+          setStatus(response.error || "Ошибка запроса", true);
+        }
+        setGenerating(false);
+      });
+    }
+
+    function requestHistory() {
+      chrome.runtime.sendMessage({ type: "overlay.chat.history" }, (response) => {
+        if (chrome.runtime.lastError) return;
+        if (response && Array.isArray(response.messages)) {
+          clearMessages();
+          for (const m of response.messages) {
+            if (m.role === "system") continue;
+            addMessage(m.role, m.content);
+          }
+          if (response.model) setTitle(response.model);
+          if (response.messages.length === 0 && !textarea.value) {
+            setStatus("Готово к отправке. Нажми Send.");
+          } else {
+            setStatus("");
+          }
+        }
+      });
+    }
+
+    btnSend.addEventListener("click", () => {
+      if (isGenerating) {
+        // Stop
+        if (currentRequestId) {
+          chrome.runtime.sendMessage({ type: "overlay.chat.abort", requestId: currentRequestId });
+        }
+        setStatus("Stopped", false);
+        setGenerating(false);
+        return;
+      }
+      const text = textarea.value.trim();
+      if (!text) return;
+      sendChat(text);
     });
 
     textarea.addEventListener("keydown", (e) => {
@@ -350,16 +430,29 @@
       }
     });
 
-    // Focus handling: don't trap global keys
-    textarea.focus();
+    btnClear.addEventListener("click", () => {
+      chrome.runtime.sendMessage({ type: "overlay.chat.clear" }, () => {
+        clearMessages();
+        setStatus("Чат очищен");
+        setTimeout(() => setStatus(""), 1500);
+      });
+    });
 
-    // Expose API on host for background messaging
+    if (initialPrompt) setStatus("Готово к отправке. Нажми Send.");
+
+    textarea.focus();
+    // Load history after creation
+    requestHistory();
+
     host._sendToAi = {
       addMessage,
+      clearMessages,
       setStatus,
+      setTitle,
       setPrompt: (prompt) => { textarea.value = prompt; textarea.focus(); setStatus("Промпт обновлён"); },
       focus: () => textarea.focus(),
-      expand: () => overlay.classList.remove("minimized")
+      expand: () => overlay.classList.remove("minimized"),
+      sendChat
     };
 
     return host;
@@ -368,7 +461,6 @@
   function ensureFloatingOverlay(prompt = "") {
     let host = getHost();
     if (host) {
-      // Reuse existing
       if (host._sendToAi) {
         host._sendToAi.expand();
         if (prompt) host._sendToAi.setPrompt(prompt);
@@ -384,20 +476,15 @@
     if (host) host.remove();
   }
 
-  // Expose globally for executeScript func and for runtime message handler
   const api = { ensureFloatingOverlay, closeFloatingOverlay, getHost, HOST_ID };
-  try {
-    window.__sendToAiOverlay = api;
-  } catch {}
-  // Also attach to globalThis for isolated world
+  try { window.__sendToAiOverlay = api; } catch {}
   try { globalThis.__sendToAiOverlay = api; } catch {}
 
-  // Runtime message listener for background → overlay communication (Phase 3+)
   try {
     chrome.runtime?.onMessage?.addListener((msg, sender, sendResponse) => {
       if (!msg || typeof msg.type !== "string") return false;
       if (msg.type === "overlay.open") {
-        const host = ensureFloatingOverlay(msg.prompt || "");
+        ensureFloatingOverlay(msg.prompt || "");
         sendResponse({ ok: true });
         return true;
       }
@@ -412,14 +499,11 @@
         sendResponse({ ok: true });
         return true;
       }
+      // Responses from background for chat streaming (future) — ignore here, handled via sendMessage callback
       return false;
     });
   } catch {}
 
-  // If this file is injected via <script> tag, auto-create if needed (no-op for Phase 2 injection via func)
-  // No auto-create on load; background will call ensureFloatingOverlay via messaging or executeScript func.
-
-  // Export for node tests (pure helpers)
   if (typeof module !== "undefined" && module.exports) {
     module.exports = { clampPosition, HOST_ID };
   }

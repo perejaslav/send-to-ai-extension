@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "node --test && node --check background.js && node --check options.js && node --check youtube-options.js && node --check options-theme.js && node --check options-ui.js && node --check options-ui-core.js && node --check services.js && node --check settings.js && node --check ai-secrets.js && node --check floating-overlay.js && node --check ai-transport.js && node --check ai-provider-openai-compatible.js && node --check menus.js && node --check youtube.js && node --check youtube-templates.js && node --check insertion.js && node --check link-prompts.js && node --check context-prompts.js && node --check custom-commands.js && node --check profiles.js && node --check diagnostics.js && node --check page-extractor.js && node --check scripts/build-zip.js",
+    "check": "node --test && node --check background.js && node --check options.js && node --check youtube-options.js && node --check options-theme.js && node --check options-ui.js && node --check options-ui-core.js && node --check services.js && node --check settings.js && node --check ai-secrets.js && node --check floating-overlay.js && node --check overlay-state.js && node --check ai-transport.js && node --check ai-provider-openai-compatible.js && node --check menus.js && node --check youtube.js && node --check youtube-templates.js && node --check insertion.js && node --check link-prompts.js && node --check context-prompts.js && node --check custom-commands.js && node --check profiles.js && node --check diagnostics.js && node --check page-extractor.js && node --check scripts/build-zip.js",
     "build:zip": "node scripts/build-zip.js"
   }
 }

@@ -20,6 +20,9 @@ import {
 } from "./services.js";
 import { normalizeYouTubeUrl } from "./youtube.js";
 import { getYouTubeTemplateById, renderYouTubeTemplate } from "./youtube-templates.js";
+import { getApiKey } from "./ai-secrets.js";
+import { sendChatRequest } from "./ai-transport.js";
+import { getOverlayHistory, appendOverlayMessage, clearOverlayHistory, trimHistory } from "./overlay-state.js";
 
 const ACTION_DEFAULT_TITLE = "Send to AI";
 const STATUS_CLEAR_DELAY_MS = 5000;
@@ -851,4 +854,186 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   })();
 
   return true;
+});
+
+const overlayAbortControllers = new Map();
+
+function getOverlayRequestKey(tabId, requestId) {
+  return `${tabId}:${requestId}`;
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || typeof message.type !== "string" || !message.type.startsWith("overlay.chat.")) {
+    return false;
+  }
+
+  const tabId = sender?.tab?.id ?? message.tabId ?? null;
+
+  if (message.type === "overlay.chat.history") {
+    (async () => {
+      try {
+        const settings = await loadSettings();
+        // If rememberConversation is false, return empty
+        if (settings.overlayMode && settings.overlayMode.rememberConversation === false) {
+          sendResponse({ messages: [], model: settings.aiProvider?.model || "" });
+          return;
+        }
+        if (typeof tabId !== "number") {
+          sendResponse({ messages: [], model: "" });
+          return;
+        }
+        const history = await getOverlayHistory(tabId);
+        sendResponse({ messages: history.messages || [], model: history.model || settings.aiProvider?.model || "" });
+      } catch (e) {
+        sendResponse({ messages: [], model: "" });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === "overlay.chat.clear") {
+    (async () => {
+      try {
+        if (typeof tabId === "number") {
+          await clearOverlayHistory(tabId);
+        }
+        sendResponse({ ok: true });
+      } catch (e) {
+        sendResponse({ ok: false, error: e.message });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === "overlay.chat.abort") {
+    const key = getOverlayRequestKey(tabId, message.requestId);
+    const controller = overlayAbortControllers.get(key);
+    if (controller) {
+      try { controller.abort(); } catch {}
+      overlayAbortControllers.delete(key);
+    }
+    // Also try generic tab key
+    const genericKey = String(tabId);
+    const generic = overlayAbortControllers.get(genericKey);
+    if (generic) {
+      try { generic.abort(); } catch {}
+      overlayAbortControllers.delete(genericKey);
+    }
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  if (message.type === "overlay.chat.send") {
+    (async () => {
+      const requestId = message.requestId || String(Date.now());
+      const prompt = typeof message.prompt === "string" ? message.prompt : "";
+      if (!prompt.trim()) {
+        sendResponse({ ok: false, error: "Пустой промпт" });
+        return;
+      }
+      if (typeof tabId !== "number") {
+        sendResponse({ ok: false, error: "tabId required" });
+        return;
+      }
+
+      let settings;
+      try {
+        settings = await loadSettings();
+      } catch {
+        sendResponse({ ok: false, error: "Не удалось загрузить настройки" });
+        return;
+      }
+
+      const provider = settings.aiProvider;
+      if (!provider || !provider.baseUrl || !provider.model) {
+        sendResponse({ ok: false, error: "AI для мини-чата ещё не настроен. Открой настройки и укажи Base URL и Model." });
+        return;
+      }
+
+      let apiKey = "";
+      try {
+        apiKey = await getApiKey();
+      } catch {}
+      if (!apiKey) {
+        sendResponse({ ok: false, error: "API key отсутствует. Добавь ключ в настройках AI." });
+        return;
+      }
+
+      // Check optional host permission for baseUrl origin
+      try {
+        const origin = new URL(provider.baseUrl).origin + "/*";
+        const hasPerm = await new Promise((resolve) => {
+          if (!chrome.permissions) { resolve(true); return; }
+          chrome.permissions.contains({ origins: [origin] }, (result) => {
+            if (chrome.runtime.lastError) resolve(true);
+            else resolve(result);
+          });
+        });
+        if (!hasPerm) {
+          sendResponse({ ok: false, error: `Нет разрешения для ${origin}. Открой настройки и разреши доступ к API.` });
+          return;
+        }
+      } catch {}
+
+      // Load history and append user prompt
+      let history;
+      try {
+        history = await getOverlayHistory(tabId);
+      } catch {
+        history = { messages: [] };
+      }
+
+      const userMessages = [...(history.messages || []), { role: "user", content: prompt }];
+      const messagesForApi = trimHistory(userMessages);
+
+      const controller = new AbortController();
+      const key = getOverlayRequestKey(tabId, requestId);
+      overlayAbortControllers.set(key, controller);
+      overlayAbortControllers.set(String(tabId), controller);
+
+      try {
+        const result = await sendChatRequest({ provider, apiKey, messages: messagesForApi, signal: controller.signal });
+        // Append assistant response to history
+        await appendOverlayMessage(tabId, "user", prompt, provider.model);
+        await appendOverlayMessage(tabId, "assistant", result.text, result.model || provider.model);
+
+        overlayAbortControllers.delete(key);
+        overlayAbortControllers.delete(String(tabId));
+
+        sendResponse({ ok: true, text: result.text, usage: result.usage, model: result.model });
+      } catch (error) {
+        overlayAbortControllers.delete(key);
+        overlayAbortControllers.delete(String(tabId));
+        if (error.name === "AbortError") {
+          sendResponse({ ok: false, error: "Stopped", aborted: true });
+          return;
+        }
+        const msg = error.message || "Network error";
+        // Do not log prompt or apiKey
+        try {
+          await appendDiagnosticsLog({
+            status: "overlay_error",
+            serviceId: "overlay",
+            serviceTitle: provider.model || "AI",
+            actionId: "overlay.chat.send",
+            actionTitle: "Floating overlay chat",
+            url: "",
+            message: msg.slice(0, 200),
+            details: {
+              method: "fetch",
+              elapsedMs: 0,
+              expectedLength: prompt.length,
+              actualLength: 0,
+              attemptedSelectors: [],
+              timeoutMs: 0
+            }
+          });
+        } catch {}
+        sendResponse({ ok: false, error: msg });
+      }
+    })();
+    return true;
+  }
+
+  return false;
 });
