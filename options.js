@@ -15,10 +15,13 @@ import {
   normalizeActiveProfileIds,
   normalizeCommandProfileIds
 } from "./profiles.js";
-import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
+import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings, normalizeInteractionMode, normalizeOverlayMode, normalizeAiProvider } from "./settings.js";
 import { CONTEXT_ACTIONS_QWEN, CONTEXT_ACTIONS_GROK, SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
+import { getApiKey, setApiKey } from "./ai-secrets.js";
+import { getYouTubeTemplates, setYouTubeTemplates } from "./youtube-options.js";
+import { normalizeYouTubeTemplates } from "./youtube-templates.js";
 
-const EXPORT_SCHEMA_VERSION = 1;
+const EXPORT_SCHEMA_VERSION = 2;
 const PINNED_SERVICE_IDS = ["sendToChatGPT", "sendToQwen", "sendToGrok"];
 
 const pinnedServicesListElement = document.getElementById("pinnedServicesList");
@@ -33,6 +36,21 @@ const showSpecialActionsElement = document.getElementById("showSpecialActions");
 const showContextActionsQwenElement = document.getElementById("showContextActionsQwen");
 const showContextActionsGrokElement = document.getElementById("showContextActionsGrok");
 const activeProfilesListElement = document.getElementById("activeProfilesList");
+
+const interactionModeLegacyElement = document.getElementById("interactionModeLegacy");
+const interactionModeOverlayElement = document.getElementById("interactionModeOverlay");
+const aiProviderBaseUrlElement = document.getElementById("aiProviderBaseUrl");
+const aiProviderModelElement = document.getElementById("aiProviderModel");
+const aiProviderApiKeyElement = document.getElementById("aiProviderApiKey");
+const toggleApiKeyButtonElement = document.getElementById("toggleApiKeyButton");
+const aiProviderTemperatureElement = document.getElementById("aiProviderTemperature");
+const overlayThemeElement = document.getElementById("overlayTheme");
+const overlayWidthElement = document.getElementById("overlayWidth");
+const overlayHeightElement = document.getElementById("overlayHeight");
+const overlayAutoSendElement = document.getElementById("overlayAutoSend");
+const overlayRememberConversationElement = document.getElementById("overlayRememberConversation");
+const testAiConnectionButtonElement = document.getElementById("testAiConnectionButton");
+const aiConnectionStatusElement = document.getElementById("aiConnectionStatus");
 
 const addCustomCommandButtonElement = document.getElementById("addCustomCommandButton");
 const customCommandsListElement = document.getElementById("customCommandsList");
@@ -76,8 +94,13 @@ const state = {
     showContextActionsGrok: true,
     enabledContextActionsGrok: {},
     customCommands: [],
-    activeProfileIds: [ALL_PROFILES_ID]
-  }
+    activeProfileIds: [ALL_PROFILES_ID],
+    youtubeTemplates: DEFAULT_SETTINGS.youtubeTemplates,
+    interactionMode: DEFAULT_SETTINGS.interactionMode,
+    overlayMode: { ...DEFAULT_SETTINGS.overlayMode },
+    aiProvider: { ...DEFAULT_SETTINGS.aiProvider }
+  },
+  apiKey: ""
 };
 
 let draggedServiceId = null;
@@ -95,7 +118,46 @@ function loadStoredSettings() {
   });
 }
 
+async function saveApiKey() {
+  try {
+    await setApiKey(state.apiKey || "");
+  } catch (error) {
+    console.warn("saveApiKey failed:", error.message);
+  }
+}
+
 function saveSettings() {
+  // Sync YouTube templates from dedicated editor (single source after edits)
+  try {
+    state.settings.youtubeTemplates = normalizeYouTubeTemplates(getYouTubeTemplates());
+  } catch {
+    // keep existing
+  }
+
+  // Normalize overlay/aiProvider before save
+  state.settings.interactionMode = normalizeInteractionMode(state.settings.interactionMode);
+  state.settings.overlayMode = normalizeOverlayMode(state.settings.overlayMode);
+  state.settings.aiProvider = normalizeAiProvider(state.settings.aiProvider);
+
+  // Persist secrets separately (not in sync)
+  saveApiKey().catch(() => {});
+
+  // Request optional host permission for AI endpoint if baseUrl present
+  if (state.settings.aiProvider.baseUrl) {
+    try {
+      const origin = new URL(state.settings.aiProvider.baseUrl).origin + "/*";
+      chrome.permissions?.contains?.({ origins: [origin] }, (has) => {
+        if (!has && !chrome.runtime.lastError) {
+          chrome.permissions.request({ origins: [origin] }, () => {
+            if (chrome.runtime.lastError) {
+              console.warn("permission request:", chrome.runtime.lastError.message);
+            }
+          });
+        }
+      });
+    } catch {}
+  }
+
   return new Promise((resolve, reject) => {
     chrome.storage.sync.set({
       serviceOrder: state.settings.serviceOrder,
@@ -108,7 +170,11 @@ function saveSettings() {
       showContextActionsGrok: state.settings.showContextActionsGrok !== false,
       enabledContextActionsGrok: state.settings.enabledContextActionsGrok,
       customCommands: state.settings.customCommands,
-      activeProfileIds: state.settings.activeProfileIds
+      activeProfileIds: state.settings.activeProfileIds,
+      youtubeTemplates: state.settings.youtubeTemplates,
+      interactionMode: state.settings.interactionMode,
+      overlayMode: state.settings.overlayMode,
+      aiProvider: state.settings.aiProvider
     }, () => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
@@ -216,9 +282,56 @@ function normalizeAndKeepSelection() {
     state.settings.serviceOrder
   );
   state.settings.activeProfileIds = normalizeActiveProfileIds(state.settings.activeProfileIds);
+  state.settings.interactionMode = normalizeInteractionMode(state.settings.interactionMode);
+  state.settings.overlayMode = normalizeOverlayMode(state.settings.overlayMode);
+  state.settings.aiProvider = normalizeAiProvider(state.settings.aiProvider);
+  try {
+    state.settings.youtubeTemplates = normalizeYouTubeTemplates(getYouTubeTemplates());
+  } catch {}
 
   if (state.selectedCustomCommandId && !getSelectedCustomCommand()) {
     state.selectedCustomCommandId = state.settings.customCommands[0]?.id || null;
+  }
+}
+
+function renderInteractionMode() {
+  const mode = normalizeInteractionMode(state.settings.interactionMode);
+  state.settings.interactionMode = mode;
+  if (interactionModeLegacyElement) interactionModeLegacyElement.checked = mode === "legacy";
+  if (interactionModeOverlayElement) interactionModeOverlayElement.checked = mode === "overlay";
+}
+
+function renderOverlayAndAiProvider() {
+  const overlay = normalizeOverlayMode(state.settings.overlayMode);
+  state.settings.overlayMode = overlay;
+  const provider = normalizeAiProvider(state.settings.aiProvider);
+  state.settings.aiProvider = provider;
+
+  if (aiProviderBaseUrlElement) aiProviderBaseUrlElement.value = provider.baseUrl || "";
+  if (aiProviderModelElement) aiProviderModelElement.value = provider.model || "";
+  if (aiProviderTemperatureElement) aiProviderTemperatureElement.value = String(provider.temperature ?? 0.7);
+  if (overlayThemeElement) overlayThemeElement.value = overlay.theme || "system";
+  if (overlayWidthElement) overlayWidthElement.value = String(overlay.width);
+  if (overlayHeightElement) overlayHeightElement.value = String(overlay.height);
+  if (overlayAutoSendElement) overlayAutoSendElement.checked = !!overlay.autoSend;
+  if (overlayRememberConversationElement) overlayRememberConversationElement.checked = overlay.rememberConversation !== false;
+  if (aiProviderApiKeyElement) {
+    // Keep current input if user is typing and apiKey already loaded; otherwise set from state
+    if (document.activeElement !== aiProviderApiKeyElement) {
+      aiProviderApiKeyElement.value = state.apiKey || "";
+    }
+  }
+}
+
+async function loadApiKeyToState() {
+  try {
+    const key = await getApiKey();
+    state.apiKey = key || "";
+    if (aiProviderApiKeyElement && document.activeElement !== aiProviderApiKeyElement) {
+      aiProviderApiKeyElement.value = state.apiKey;
+    }
+  } catch {
+    state.apiKey = "";
   }
 }
 
@@ -706,10 +819,14 @@ function closeCustomCommandForm() {
 }
 
 function createExportPayload() {
+  try {
+    state.settings.youtubeTemplates = normalizeYouTubeTemplates(getYouTubeTemplates());
+  } catch {}
   return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     extension: "send-to-ai-extension",
+    secretsIncluded: false,
     settings: {
       serviceOrder: state.settings.serviceOrder,
       enabledServices: state.settings.enabledServices,
@@ -718,8 +835,14 @@ function createExportPayload() {
       enabledSpecialActions: state.settings.enabledSpecialActions,
       showContextActionsQwen: state.settings.showContextActionsQwen !== false,
       enabledContextActionsQwen: state.settings.enabledContextActionsQwen,
+      showContextActionsGrok: state.settings.showContextActionsGrok !== false,
+      enabledContextActionsGrok: state.settings.enabledContextActionsGrok,
       customCommands: state.settings.customCommands,
-      activeProfileIds: state.settings.activeProfileIds
+      activeProfileIds: state.settings.activeProfileIds,
+      youtubeTemplates: state.settings.youtubeTemplates,
+      interactionMode: state.settings.interactionMode,
+      overlayMode: state.settings.overlayMode,
+      aiProvider: state.settings.aiProvider
     }
   };
 }
@@ -802,6 +925,13 @@ async function resetAllSettings() {
 
   state.settings = structuredClone(DEFAULT_SETTINGS);
   ensureDefaultServiceCompatibility();
+  try {
+    setYouTubeTemplates(state.settings.youtubeTemplates);
+  } catch {}
+  state.apiKey = "";
+  try {
+    await setApiKey("");
+  } catch {}
   state.selectedCustomCommandId = null;
   await saveSettings();
   render();
@@ -876,6 +1006,8 @@ function render() {
   showSpecialActionsElement.checked = state.settings.showSpecialActions !== false;
   showContextActionsQwenElement.checked = state.settings.showContextActionsQwen !== false;
   showContextActionsGrokElement.checked = state.settings.showContextActionsGrok !== false;
+  renderInteractionMode();
+  renderOverlayAndAiProvider();
   renderDiagnosticsLog().catch((error) => setStatus(`Ошибка диагностики: ${error.message}`, true));
 }
 
@@ -904,6 +1036,11 @@ async function handleSave() {
 function handleReset() {
   state.settings = structuredClone(DEFAULT_SETTINGS);
   ensureDefaultServiceCompatibility();
+  try {
+    setYouTubeTemplates(state.settings.youtubeTemplates);
+  } catch {}
+  state.apiKey = "";
+  if (aiProviderApiKeyElement) aiProviderApiKeyElement.value = "";
   state.selectedCustomCommandId = null;
   render();
   setStatus('Настройки сброшены. Нажми "Сохранить" для применения.', false);
@@ -915,7 +1052,11 @@ async function init() {
     state.services = SERVICE_CONFIGS.map(({ id, title }) => ({ id, title }));
     state.settings = normalizeSettings(storedSettings);
     ensureDefaultServiceCompatibility();
+    try {
+      setYouTubeTemplates(state.settings.youtubeTemplates);
+    } catch {}
     state.selectedCustomCommandId = state.settings.customCommands[0]?.id || null;
+    await loadApiKeyToState();
     render();
   } catch (error) {
     setStatus(`Ошибка инициализации: ${error.message}`, true);
@@ -936,6 +1077,163 @@ showContextActionsGrokElement.addEventListener("change", () => {
   state.settings.showContextActionsGrok = showContextActionsGrokElement.checked;
   renderContextActionsGrokList();
 });
+
+if (interactionModeLegacyElement) {
+  interactionModeLegacyElement.addEventListener("change", () => {
+    if (interactionModeLegacyElement.checked) state.settings.interactionMode = "legacy";
+  });
+}
+if (interactionModeOverlayElement) {
+  interactionModeOverlayElement.addEventListener("change", () => {
+    if (interactionModeOverlayElement.checked) state.settings.interactionMode = "overlay";
+  });
+}
+
+if (aiProviderBaseUrlElement) {
+  aiProviderBaseUrlElement.addEventListener("input", () => {
+    state.settings.aiProvider.baseUrl = aiProviderBaseUrlElement.value.trim();
+  });
+}
+if (aiProviderModelElement) {
+  aiProviderModelElement.addEventListener("input", () => {
+    state.settings.aiProvider.model = aiProviderModelElement.value.trim();
+  });
+}
+if (aiProviderApiKeyElement) {
+  aiProviderApiKeyElement.addEventListener("input", () => {
+    state.apiKey = aiProviderApiKeyElement.value;
+  });
+}
+if (toggleApiKeyButtonElement) {
+  toggleApiKeyButtonElement.addEventListener("click", () => {
+    const isPassword = aiProviderApiKeyElement.type === "password";
+    aiProviderApiKeyElement.type = isPassword ? "text" : "password";
+    toggleApiKeyButtonElement.textContent = isPassword ? "Скрыть" : "Показать";
+  });
+}
+if (aiProviderTemperatureElement) {
+  aiProviderTemperatureElement.addEventListener("input", () => {
+    const v = Number.parseFloat(aiProviderTemperatureElement.value);
+    if (Number.isFinite(v)) state.settings.aiProvider.temperature = v;
+  });
+  aiProviderTemperatureElement.addEventListener("change", () => {
+    state.settings.aiProvider = normalizeAiProvider(state.settings.aiProvider);
+    renderOverlayAndAiProvider();
+  });
+}
+if (overlayThemeElement) {
+  overlayThemeElement.addEventListener("change", () => {
+    state.settings.overlayMode.theme = overlayThemeElement.value;
+  });
+}
+if (overlayWidthElement) {
+  overlayWidthElement.addEventListener("input", () => {
+    const v = Number.parseInt(overlayWidthElement.value, 10);
+    if (Number.isFinite(v)) state.settings.overlayMode.width = v;
+  });
+  overlayWidthElement.addEventListener("change", () => {
+    state.settings.overlayMode = normalizeOverlayMode(state.settings.overlayMode);
+    renderOverlayAndAiProvider();
+  });
+}
+if (overlayHeightElement) {
+  overlayHeightElement.addEventListener("input", () => {
+    const v = Number.parseInt(overlayHeightElement.value, 10);
+    if (Number.isFinite(v)) state.settings.overlayMode.height = v;
+  });
+  overlayHeightElement.addEventListener("change", () => {
+    state.settings.overlayMode = normalizeOverlayMode(state.settings.overlayMode);
+    renderOverlayAndAiProvider();
+  });
+}
+if (overlayAutoSendElement) {
+  overlayAutoSendElement.addEventListener("change", () => {
+    state.settings.overlayMode.autoSend = !!overlayAutoSendElement.checked;
+  });
+}
+if (overlayRememberConversationElement) {
+  overlayRememberConversationElement.addEventListener("change", () => {
+    state.settings.overlayMode.rememberConversation = !!overlayRememberConversationElement.checked;
+  });
+}
+if (testAiConnectionButtonElement) {
+  testAiConnectionButtonElement.addEventListener("click", async () => {
+    const baseUrl = aiProviderBaseUrlElement?.value?.trim() || state.settings.aiProvider.baseUrl;
+    const model = aiProviderModelElement?.value?.trim() || state.settings.aiProvider.model;
+    const temperature = Number.parseFloat(aiProviderTemperatureElement?.value);
+    const apiKey = aiProviderApiKeyElement?.value ?? state.apiKey;
+
+    if (!baseUrl || !model) {
+      if (aiConnectionStatusElement) {
+        aiConnectionStatusElement.textContent = "Укажи Base URL и Model";
+        aiConnectionStatusElement.style.color = "#b91c1c";
+      }
+      return;
+    }
+    if (aiConnectionStatusElement) {
+      aiConnectionStatusElement.textContent = "Проверка...";
+      aiConnectionStatusElement.style.color = "#64748b";
+    }
+    testAiConnectionButtonElement.disabled = true;
+
+    // Request optional host permission for origin
+    try {
+      const origin = new URL(baseUrl).origin + "/*";
+      const has = await new Promise((resolve) => {
+        chrome.permissions.contains({ origins: [origin] }, (result) => {
+          if (chrome.runtime.lastError) resolve(true);
+          else resolve(result);
+        });
+      });
+      if (!has) {
+        const granted = await new Promise((resolve) => {
+          chrome.permissions.request({ origins: [origin] }, (granted) => {
+            if (chrome.runtime.lastError) resolve(false);
+            else resolve(granted);
+          });
+        });
+        if (!granted) {
+          if (aiConnectionStatusElement) {
+            aiConnectionStatusElement.textContent = `Нет разрешения для ${origin}`;
+            aiConnectionStatusElement.style.color = "#b91c1c";
+          }
+          testAiConnectionButtonElement.disabled = false;
+          return;
+        }
+      }
+    } catch {}
+
+    chrome.runtime.sendMessage(
+      {
+        type: "ai.testConnection",
+        provider: { type: "openai-compatible", baseUrl, model, temperature: Number.isFinite(temperature) ? temperature : 0.7 },
+        apiKey
+      },
+      (response) => {
+        testAiConnectionButtonElement.disabled = false;
+        if (chrome.runtime.lastError) {
+          if (aiConnectionStatusElement) {
+            aiConnectionStatusElement.textContent = `Ошибка: ${chrome.runtime.lastError.message}`;
+            aiConnectionStatusElement.style.color = "#b91c1c";
+          }
+          return;
+        }
+        if (response && response.ok) {
+          if (aiConnectionStatusElement) {
+            aiConnectionStatusElement.textContent = "✓ Подключение работает";
+            aiConnectionStatusElement.style.color = "#166534";
+          }
+        } else {
+          const err = response?.error || "Unknown error";
+          if (aiConnectionStatusElement) {
+            aiConnectionStatusElement.textContent = err;
+            aiConnectionStatusElement.style.color = "#b91c1c";
+          }
+        }
+      }
+    );
+  });
+}
 
 addCustomCommandButtonElement.addEventListener("click", addCustomCommand);
 deleteCustomCommandButtonElement.addEventListener("click", deleteSelectedCustomCommand);

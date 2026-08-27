@@ -1037,3 +1037,57 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return false;
 });
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || message.type !== "ai.testConnection") {
+    return false;
+  }
+
+  (async () => {
+    try {
+      const provider = message.provider;
+      const apiKey = typeof message.apiKey === "string" && message.apiKey ? message.apiKey : await getApiKey();
+      if (!provider || !provider.baseUrl || !provider.model) {
+        sendResponse({ ok: false, error: "Укажи Base URL и Model" });
+        return;
+      }
+      if (!apiKey) {
+        sendResponse({ ok: false, error: "API key отсутствует" });
+        return;
+      }
+      // Optional host permission check (best-effort)
+      try {
+        const origin = new URL(provider.baseUrl).origin + "/*";
+        const hasPerm = await new Promise((resolve) => {
+          if (!chrome.permissions) { resolve(true); return; }
+          chrome.permissions.contains({ origins: [origin] }, (result) => {
+            if (chrome.runtime.lastError) resolve(true);
+            else resolve(result);
+          });
+        });
+        if (!hasPerm) {
+          sendResponse({ ok: false, error: `Нет разрешения для ${origin}. Разреши в настройках.` });
+          return;
+        }
+      } catch {}
+
+      const result = await sendChatRequest({
+        provider,
+        apiKey,
+        messages: [{ role: "user", content: "Reply exactly with: OK" }],
+        signal: undefined
+      });
+
+      if (result && typeof result.text === "string" && result.text.trim().length > 0) {
+        sendResponse({ ok: true, text: result.text });
+      } else {
+        sendResponse({ ok: false, error: "Пустой ответ" });
+      }
+    } catch (error) {
+      const msg = error.message || "Network error";
+      sendResponse({ ok: false, error: msg });
+    }
+  })();
+
+  return true;
+});

@@ -2,7 +2,7 @@ export const OPTIONS_TAB_GROUPS = [
   {
     id: "basic",
     title: "Основное",
-    headings: ["Оформление настроек", "Сервисы"]
+    headings: ["Оформление настроек", "Сервисы", "Режим открытия AI", "AI для мини-чата"]
   },
   {
     id: "commands",
