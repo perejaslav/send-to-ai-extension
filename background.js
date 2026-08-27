@@ -153,6 +153,107 @@ async function loadSettings() {
   }
 }
 
+function isInjectableUrl(url) {
+  return typeof url === "string" && /^https?:\/\//i.test(url);
+}
+
+async function injectFloatingOverlay(tabId, prompt) {
+  if (!tabId) {
+    return { status: "tab_unavailable" };
+  }
+
+  let tab;
+  try {
+    tab = await new Promise((resolve, reject) => {
+      chrome.tabs.get(tabId, (t) => {
+        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+        else resolve(t);
+      });
+    });
+  } catch {
+    return { status: "tab_unavailable" };
+  }
+
+  if (!tab || !isInjectableUrl(tab.url)) {
+    return { status: "unsupported_page", message: "Мини-чат нельзя открыть на системной странице браузера." };
+  }
+
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ["floating-overlay.js"] });
+  } catch (error) {
+    // File injection may fail if already injected or permission issue; try to continue
+    if (!error.message.includes("already") && !error.message.includes("Cannot access")) {
+      // still attempt func injection
+    }
+  }
+
+  try {
+    const results = await new Promise((resolve, reject) => {
+      chrome.scripting.executeScript(
+        {
+          target: { tabId },
+          func: (p) => {
+            try {
+              const api = globalThis.__sendToAiOverlay || window.__sendToAiOverlay;
+              if (api && api.ensureFloatingOverlay) {
+                api.ensureFloatingOverlay(p);
+                return { ok: true };
+              }
+              return { ok: false, error: "overlay api not found" };
+            } catch (e) {
+              return { ok: false, error: e.message };
+            }
+          },
+          args: [prompt || ""]
+        },
+        (res) => {
+          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+          else resolve(res);
+        }
+      );
+    });
+    const ok = results?.[0]?.result?.ok;
+    if (ok) return { status: "success" };
+    return { status: "injection_failed", message: results?.[0]?.result?.error || "overlay injection failed" };
+  } catch (error) {
+    return { status: "injection_failed", message: error.message };
+  }
+}
+
+async function dispatchPrompt({ tab, prompt, service, settings, context }) {
+  const mode = settings.interactionMode || "legacy";
+  if (mode === "overlay") {
+    const tabId = tab?.id;
+    if (!tabId) {
+      const result = { status: "tab_unavailable" };
+      showActionStatus(result);
+      await logDiagnosticIfNeeded(result, { ...context, service });
+      return result;
+    }
+    const result = await injectFloatingOverlay(tabId, prompt);
+    if (result.status === "success") {
+      showActionStatus(result);
+      // Phase 4+ will handle autoSend via AI transport; for now just show prompt in composer
+      if (settings.overlayMode?.autoSend) {
+        // placeholder for future autoSend trigger
+      }
+    } else if (result.status === "unsupported_page") {
+      chrome.action.setBadgeBackgroundColor({ color: "#b91c1c" });
+      chrome.action.setBadgeText({ text: "ERR" });
+      chrome.action.setTitle({ title: result.message });
+      setTimeout(clearActionStatus, STATUS_CLEAR_DELAY_MS);
+      await logDiagnosticIfNeeded(result, { ...context, service });
+    } else {
+      showActionStatus(result);
+      await logDiagnosticIfNeeded(result, { ...context, service });
+    }
+    return result;
+  }
+
+  // Legacy flow
+  return runServiceAction(service, prompt, context, settings);
+}
+
 function safeCreateContextMenu(options) {
   chrome.contextMenus.create(options, () => {
     if (chrome.runtime.lastError) {
@@ -371,7 +472,7 @@ function resolveYouTubeTemplateId(menuItemId) {
   return null;
 }
 
-async function handleYouTubeTemplateAction(linkUrl, templateId, settings) {
+async function handleYouTubeTemplateAction(linkUrl, templateId, settings, tab) {
   const cleanUrl = normalizeYouTubeUrl(linkUrl);
   if (!cleanUrl) {
     const result = { status: "unsupported_link" };
@@ -423,14 +524,21 @@ async function handleYouTubeTemplateAction(linkUrl, templateId, settings) {
     return;
   }
 
-  await runServiceAction(targetService, textToInsert, {
+  const context = {
     actionId: `youtube:${template.id}`,
     actionTitle: template.title,
     url: cleanUrl
-  });
+  };
+
+  if (settings.interactionMode === "overlay") {
+    await dispatchPrompt({ tab, prompt: textToInsert, service: targetService, settings, context });
+    return;
+  }
+
+  await runServiceAction(targetService, textToInsert, context);
 }
 
-async function handleContextAction(action, info, tab) {
+async function handleContextAction(action, info, tab, settings) {
   const sourceUrl = action.contextType === "page"
     ? info.pageUrl || tab?.url || ""
     : info.linkUrl || tab?.url || "";
@@ -472,11 +580,18 @@ async function handleContextAction(action, info, tab) {
     return;
   }
 
-  await runServiceAction(targetService, textToInsert, {
+  const context = {
     actionId: action.id,
     actionTitle: action.title,
     url: sourceUrl
-  });
+  };
+
+  if (settings && settings.interactionMode === "overlay") {
+    await dispatchPrompt({ tab, prompt: textToInsert, service: targetService, settings, context });
+    return;
+  }
+
+  await runServiceAction(targetService, textToInsert, context);
 }
 
 async function buildExtraCustomCommandContext(command, tab) {
@@ -554,11 +669,18 @@ async function handleCustomCommand(command, settings, info, tab) {
     return;
   }
 
-  await runServiceAction(targetService, textToInsert, {
+  const context = {
     actionId: command.id,
     actionTitle: command.title,
     url: sourceContext.url
-  });
+  };
+
+  if (settings.interactionMode === "overlay") {
+    await dispatchPrompt({ tab, prompt: textToInsert, service: targetService, settings, context });
+    return;
+  }
+
+  await runServiceAction(targetService, textToInsert, context);
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -592,13 +714,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   const contextAction = CONTEXT_ACTIONS_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_QWEN_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_GROK_BY_ID[info.menuItemId];
   if (contextAction) {
-    await handleContextAction(contextAction, info, tab);
+    await handleContextAction(contextAction, info, tab, settings);
     return;
   }
 
   const youtubeTemplateId = resolveYouTubeTemplateId(info.menuItemId);
   if (youtubeTemplateId) {
-    await handleYouTubeTemplateAction(info.linkUrl || "", youtubeTemplateId, settings);
+    await handleYouTubeTemplateAction(info.linkUrl || "", youtubeTemplateId, settings, tab);
     return;
   }
 
@@ -616,11 +738,18 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       return;
     }
 
-    await runServiceAction(defaultService, info.selectionText, {
+    const quickContext = {
       actionId: QUICK_DEFAULT_MENU_ID,
       actionTitle: "Отправить в сервис по умолчанию",
       url: info.pageUrl || tab?.url || ""
-    });
+    };
+
+    if (settings.interactionMode === "overlay") {
+      await dispatchPrompt({ tab, prompt: info.selectionText, service: defaultService, settings, context: quickContext });
+      return;
+    }
+
+    await runServiceAction(defaultService, info.selectionText, quickContext);
     return;
   }
 
@@ -630,11 +759,18 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       return;
     }
 
-    await runServiceAction(directService, info.selectionText, {
+    const directContext = {
       actionId: directService.id,
       actionTitle: directService.title,
       url: info.pageUrl || tab?.url || ""
-    });
+    };
+
+    if (settings.interactionMode === "overlay") {
+      await dispatchPrompt({ tab, prompt: info.selectionText, service: directService, settings, context: directContext });
+      return;
+    }
+
+    await runServiceAction(directService, info.selectionText, directContext);
     return;
   }
 
@@ -657,11 +793,19 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
 
-  await runServiceAction(targetService, specialAction.transformText(info.selectionText), {
+  const specialPrompt = specialAction.transformText(info.selectionText);
+  const specialContext = {
     actionId: specialAction.id,
     actionTitle: specialAction.title,
     url: info.pageUrl || tab?.url || ""
-  });
+  };
+
+  if (settings.interactionMode === "overlay") {
+    await dispatchPrompt({ tab, prompt: specialPrompt, service: targetService, settings, context: specialContext });
+    return;
+  }
+
+  await runServiceAction(targetService, specialPrompt, specialContext);
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -675,16 +819,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  runServiceAction(service, message.text, {
-    actionId: "popup",
-    actionTitle: "Popup quick send",
-    url: sender?.tab?.url || ""
-  })
-    .then((result) => sendResponse(result))
-    .catch((error) => {
+  (async () => {
+    try {
+      const settings = await loadSettings();
+      if (settings.interactionMode === "overlay" && sender?.tab?.id) {
+        const result = await dispatchPrompt({
+          tab: sender.tab,
+          prompt: message.text,
+          service,
+          settings,
+          context: {
+            actionId: "popup",
+            actionTitle: "Popup quick send",
+            url: sender?.tab?.url || ""
+          }
+        });
+        sendResponse(result);
+        return;
+      }
+
+      const result = await runServiceAction(service, message.text, {
+        actionId: "popup",
+        actionTitle: "Popup quick send",
+        url: sender?.tab?.url || ""
+      });
+      sendResponse(result);
+    } catch (error) {
       console.warn("Popup service action failed:", error.message);
       sendResponse({ status: "error" });
-    });
+    }
+  })();
 
   return true;
 });
