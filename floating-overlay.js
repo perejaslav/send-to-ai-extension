@@ -430,21 +430,19 @@
     }
 
     function requestHistory() {
-      chrome.runtime.sendMessage({ type: "overlay.chat.history" }, (response) => {
-        if (chrome.runtime.lastError) return;
-        if (response && Array.isArray(response.messages)) {
-          clearMessages();
-          for (const m of response.messages) {
-            if (m.role === "system") continue;
-            addMessage(m.role, m.content);
+      return new Promise((resolve) => {
+        chrome.runtime.sendMessage({ type: "overlay.chat.history" }, (response) => {
+          if (chrome.runtime.lastError) { resolve(); return; }
+          if (response && Array.isArray(response.messages)) {
+            clearMessages();
+            for (const m of response.messages) {
+              if (m.role === "system") continue;
+              addMessage(m.role, m.content);
+            }
+            if (response.model) setTitle(response.model);
           }
-          if (response.model) setTitle(response.model);
-          if (response.messages.length === 0 && !textarea.value) {
-            setStatus("Готово к отправке. Нажми Send.");
-          } else {
-            setStatus("");
-          }
-        }
+          resolve();
+        });
       });
     }
 
@@ -479,18 +477,25 @@
       });
     });
 
-    if (initialPrompt) {
-      if (config.autoSend) {
-        // Auto-send: show user message and trigger request immediately
-        sendChat(initialPrompt);
+    // Ordered init: history first, then prompt (prevents race where history clears new message)
+    requestHistory().then(() => {
+      if (initialPrompt) {
+        if (config.autoSend) {
+          sendChat(initialPrompt);
+        } else {
+          textarea.value = initialPrompt;
+          setStatus("Готово к отправке. Нажми Send.");
+          textarea.focus();
+        }
       } else {
-        setStatus("Готово к отправке. Нажми Send.");
+        if (messages.children.length === 0 && !textarea.value) {
+          setStatus("Готово к отправке. Нажми Send.");
+        } else {
+          setStatus("");
+        }
+        textarea.focus();
       }
-    } else {
-      requestHistory();
-    }
-
-    textarea.focus();
+    });
 
     host._sendToAi = {
       addMessage,
