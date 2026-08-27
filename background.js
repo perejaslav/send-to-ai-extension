@@ -23,6 +23,7 @@ import { getYouTubeTemplateById, renderYouTubeTemplate } from "./youtube-templat
 import { getApiKey } from "./ai-secrets.js";
 import { sendChatRequest } from "./ai-transport.js";
 import { getOverlayHistory, appendOverlayMessage, clearOverlayHistory, trimHistory } from "./overlay-state.js";
+import { buildOverlayConfig, decideInteractionRoute } from "./overlay-routing.js";
 
 const ACTION_DEFAULT_TITLE = "Send to AI";
 const STATUS_CLEAR_DELAY_MS = 5000;
@@ -160,7 +161,7 @@ function isInjectableUrl(url) {
   return typeof url === "string" && /^https?:\/\//i.test(url);
 }
 
-async function injectFloatingOverlay(tabId, prompt) {
+async function injectFloatingOverlay(tabId, prompt, config = {}) {
   if (!tabId) {
     return { status: "tab_unavailable" };
   }
@@ -181,25 +182,51 @@ async function injectFloatingOverlay(tabId, prompt) {
     return { status: "unsupported_page", message: "Мини-чат нельзя открыть на системной странице браузера." };
   }
 
+  // Idempotent: try existing overlay API first without re-injecting file (avoids duplicate listeners)
+  try {
+    const existing = await new Promise((resolve, reject) => {
+      chrome.scripting.executeScript(
+        {
+          target: { tabId },
+          func: (p, cfg) => {
+            try {
+              const api = globalThis.__sendToAiOverlay;
+              if (api && api.ensureFloatingOverlay) {
+                api.ensureFloatingOverlay(p, cfg);
+                return { ok: true, existed: true };
+              }
+              return { ok: false, existed: false };
+            } catch (e) {
+              return { ok: false, error: e.message };
+            }
+          },
+          args: [prompt || "", config]
+        },
+        (res) => {
+          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+          else resolve(res);
+        }
+      );
+    });
+    if (existing?.[0]?.result?.ok) {
+      return { status: "success" };
+    }
+  } catch {}
+
   try {
     await chrome.scripting.executeScript({ target: { tabId }, files: ["floating-overlay.js"] });
-  } catch (error) {
-    // File injection may fail if already injected or permission issue; try to continue
-    if (!error.message.includes("already") && !error.message.includes("Cannot access")) {
-      // still attempt func injection
-    }
-  }
+  } catch {}
 
   try {
     const results = await new Promise((resolve, reject) => {
       chrome.scripting.executeScript(
         {
           target: { tabId },
-          func: (p) => {
+          func: (p, cfg) => {
             try {
               const api = globalThis.__sendToAiOverlay || window.__sendToAiOverlay;
               if (api && api.ensureFloatingOverlay) {
-                api.ensureFloatingOverlay(p);
+                api.ensureFloatingOverlay(p, cfg);
                 return { ok: true };
               }
               return { ok: false, error: "overlay api not found" };
@@ -207,7 +234,7 @@ async function injectFloatingOverlay(tabId, prompt) {
               return { ok: false, error: e.message };
             }
           },
-          args: [prompt || ""]
+          args: [prompt || "", config]
         },
         (res) => {
           if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
@@ -224,22 +251,41 @@ async function injectFloatingOverlay(tabId, prompt) {
 }
 
 async function dispatchPrompt({ tab, prompt, service, settings, context }) {
-  const mode = settings.interactionMode || "legacy";
-  if (mode === "overlay") {
-    const tabId = tab?.id;
-    if (!tabId) {
-      const result = { status: "tab_unavailable" };
-      showActionStatus(result);
-      await logDiagnosticIfNeeded(result, { ...context, service });
-      return result;
-    }
-    const result = await injectFloatingOverlay(tabId, prompt);
+  const route = decideInteractionRoute({
+    interactionMode: settings.interactionMode,
+    tabId: tab?.id,
+    tabUrl: tab?.url,
+    prompt
+  });
+
+  if (route.action === "invalid_prompt") {
+    const result = { status: "invalid_prompt" };
+    await logDiagnosticIfNeeded(result, { ...context, service });
+    return result;
+  }
+
+  if (route.action === "tab_unavailable") {
+    const result = { status: "tab_unavailable" };
+    showActionStatus(result);
+    await logDiagnosticIfNeeded(result, { ...context, service });
+    return result;
+  }
+
+  if (route.action === "unsupported_page") {
+    const result = { status: "unsupported_page", message: "Мини-чат нельзя открыть на системной странице браузера." };
+    chrome.action.setBadgeBackgroundColor({ color: "#b91c1c" });
+    chrome.action.setBadgeText({ text: "ERR" });
+    chrome.action.setTitle({ title: result.message });
+    setTimeout(clearActionStatus, STATUS_CLEAR_DELAY_MS);
+    await logDiagnosticIfNeeded(result, { ...context, service });
+    return result;
+  }
+
+  if (route.action === "overlay") {
+    const config = buildOverlayConfig(settings, service);
+    const result = await injectFloatingOverlay(tab.id, prompt, config);
     if (result.status === "success") {
       showActionStatus(result);
-      // Phase 4+ will handle autoSend via AI transport; for now just show prompt in composer
-      if (settings.overlayMode?.autoSend) {
-        // placeholder for future autoSend trigger
-      }
     } else if (result.status === "unsupported_page") {
       chrome.action.setBadgeBackgroundColor({ color: "#b91c1c" });
       chrome.action.setBadgeText({ text: "ERR" });
@@ -975,16 +1021,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       } catch {}
 
-      // Load history and append user prompt
-      let history;
-      try {
-        history = await getOverlayHistory(tabId);
-      } catch {
-        history = { messages: [] };
+      const remember = settings.overlayMode?.rememberConversation !== false;
+      let messagesForApi;
+      if (remember) {
+        let history;
+        try {
+          history = await getOverlayHistory(tabId);
+        } catch {
+          history = { messages: [] };
+        }
+        const userMessages = [...(history.messages || []), { role: "user", content: prompt }];
+        messagesForApi = trimHistory(userMessages);
+      } else {
+        messagesForApi = [{ role: "user", content: prompt }];
       }
-
-      const userMessages = [...(history.messages || []), { role: "user", content: prompt }];
-      const messagesForApi = trimHistory(userMessages);
 
       const controller = new AbortController();
       const key = getOverlayRequestKey(tabId, requestId);
@@ -993,9 +1043,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       try {
         const result = await sendChatRequest({ provider, apiKey, messages: messagesForApi, signal: controller.signal });
-        // Append assistant response to history
-        await appendOverlayMessage(tabId, "user", prompt, provider.model);
-        await appendOverlayMessage(tabId, "assistant", result.text, result.model || provider.model);
+        if (remember) {
+          await appendOverlayMessage(tabId, "user", prompt, provider.model);
+          await appendOverlayMessage(tabId, "assistant", result.text, result.model || provider.model);
+        }
 
         overlayAbortControllers.delete(key);
         overlayAbortControllers.delete(String(tabId));

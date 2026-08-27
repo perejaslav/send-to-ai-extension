@@ -1,5 +1,10 @@
-// Floating AI Overlay — Shadow DOM (Phase 5: conversation, transport, abort, history)
+// Floating AI Overlay — Shadow DOM (Phase 6 fixes: autoSend, size/theme, idempotent guard)
 (() => {
+  if (globalThis.__sendToAiOverlayInitialized) {
+    return;
+  }
+  globalThis.__sendToAiOverlayInitialized = true;
+
   const HOST_ID = "send-to-ai-floating-overlay-host";
 
   function getHost() {
@@ -33,6 +38,43 @@
         line-height: 1.45;
         resize: both;
       }
+      .overlay[data-theme="light"] {
+        background: #ffffff;
+        color: #1f2a37;
+        border-color: #dbe3ef;
+      }
+      .overlay[data-theme="light"] .header { background: #f8fafc; border-color: #e2e8f0; }
+      .overlay[data-theme="light"] .messages { background: #ffffff; }
+      .overlay[data-theme="light"] .composer { background: #ffffff; border-color: #e2e8f0; }
+      .overlay[data-theme="light"] .composer textarea { background: #ffffff; color: #1f2a37; border-color: #cbd5e1; }
+      .overlay[data-theme="light"] .msg-user { background: #1d4ed8; color: #ffffff; }
+      .overlay[data-theme="light"] .msg-assistant { background: #f1f5f9; color: #0f172a; }
+      .overlay[data-theme="light"] .toolbar { background: #ffffff; border-color: #f1f5f9; }
+
+      .overlay[data-theme="dark"] {
+        background: #0f172a;
+        color: #e2e8f0;
+        border-color: #1e293b;
+      }
+      .overlay[data-theme="dark"] .header { background: #0f172a; border-color: #1e293b; }
+      .overlay[data-theme="dark"] .messages { background: #0f172a; }
+      .overlay[data-theme="dark"] .composer { background: #0f172a; border-color: #1e293b; }
+      .overlay[data-theme="dark"] .composer textarea { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+      .overlay[data-theme="dark"] .msg-user { background: #1e40af; color: #ffffff; }
+      .overlay[data-theme="dark"] .msg-assistant { background: #1e293b; color: #e2e8f0; }
+      .overlay[data-theme="dark"] .toolbar { background: #0f172a; border-color: #1e293b; }
+
+      @media (prefers-color-scheme: dark) {
+        .overlay[data-theme="system"] { background: #0f172a; color: #e2e8f0; border-color: #1e293b; }
+        .overlay[data-theme="system"] .header { background: #0f172a; border-color: #1e293b; }
+        .overlay[data-theme="system"] .messages { background: #0f172a; }
+        .overlay[data-theme="system"] .composer { background: #0f172a; border-color: #1e293b; }
+        .overlay[data-theme="system"] .composer textarea { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+        .overlay[data-theme="system"] .msg-user { background: #1e40af; color: #ffffff; }
+        .overlay[data-theme="system"] .msg-assistant { background: #1e293b; color: #e2e8f0; }
+        .overlay[data-theme="system"] .toolbar { background: #0f172a; border-color: #1e293b; }
+      }
+
       .overlay.minimized {
         height: 48px !important;
         min-height: 48px !important;
@@ -43,16 +85,6 @@
       .overlay.minimized .status,
       .overlay.minimized .composer,
       .overlay.minimized .toolbar { display: none; }
-      @media (prefers-color-scheme: dark) {
-        .overlay { background: #0f172a; color: #e2e8f0; border-color: #1e293b; }
-        .header { background: #0f172a; border-color: #1e293b; }
-        .messages { background: #0f172a; }
-        .composer { background: #0f172a; border-color: #1e293b; }
-        .composer textarea { background: #1e293b; color: #e2e8f0; border-color: #334155; }
-        .msg-user { background: #1e40af; color: #ffffff; }
-        .msg-assistant { background: #1e293b; color: #e2e8f0; }
-        .toolbar { background: #0f172a; border-color: #1e293b; }
-      }
       .header {
         display: flex;
         align-items: center;
@@ -189,7 +221,24 @@
     };
   }
 
-  function createOverlay(initialPrompt = "") {
+  function applyOverlayConfig(overlay, config) {
+    if (!overlay || !config) return;
+    const width = Number.isFinite(config.width) ? config.width : 460;
+    const height = Number.isFinite(config.height) ? config.height : 620;
+    // Clamp already done in background via normalize, but also clamp to viewport
+    const clampedW = Math.min(Math.max(width, 360), Math.min(800, window.innerWidth * 0.9));
+    const clampedH = Math.min(Math.max(height, 400), Math.min(900, window.innerHeight * 0.9));
+    overlay.style.width = clampedW + "px";
+    overlay.style.height = clampedH + "px";
+    const theme = config.theme === "light" || config.theme === "dark" ? config.theme : "system";
+    overlay.dataset.theme = theme;
+    if (config.model) {
+      const titleEl = overlay.querySelector(".header-title");
+      if (titleEl) titleEl.textContent = config.model;
+    }
+  }
+
+  function createOverlay(initialPrompt = "", config = {}) {
     if (getHost()) return getHost();
 
     const host = document.createElement("div");
@@ -215,13 +264,13 @@
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-label", "AI mini-chat");
     overlay.style.pointerEvents = "auto";
+    applyOverlayConfig(overlay, config.overlayMode || config);
 
-    // Header
     const header = document.createElement("div");
     header.className = "header";
     const title = document.createElement("div");
     title.className = "header-title";
-    title.textContent = "AI Chat";
+    title.textContent = (config.overlayMode && config.model) || config.model || "AI Chat";
     const actions = document.createElement("div");
     actions.className = "header-actions";
     const btnMin = document.createElement("button");
@@ -235,7 +284,6 @@
     actions.append(btnMin, btnClose);
     header.append(title, actions);
 
-    // Toolbar (New chat)
     const toolbar = document.createElement("div");
     toolbar.className = "toolbar";
     const btnClear = document.createElement("button");
@@ -244,15 +292,12 @@
     btnClear.title = "Очистить историю";
     toolbar.append(btnClear);
 
-    // Messages
     const messages = document.createElement("div");
     messages.className = "messages";
 
-    // Status
     const status = document.createElement("div");
     status.className = "status";
 
-    // Composer
     const composer = document.createElement("div");
     composer.className = "composer";
     const textarea = document.createElement("textarea");
@@ -267,7 +312,6 @@
     overlay.append(header, toolbar, messages, status, composer);
     shadow.append(overlay);
 
-    // Drag handling
     let dragging = false;
     let startX = 0, startY = 0, startLeft = 0, startTop = 0;
 
@@ -314,7 +358,6 @@
     btnMin.addEventListener("click", () => overlay.classList.toggle("minimized"));
     btnClose.addEventListener("click", () => host.remove());
 
-    // Message helpers
     function addMessage(role, text) {
       const div = document.createElement("div");
       div.className = "msg " + (role === "user" ? "msg-user" : role === "assistant" ? "msg-assistant" : "msg-system");
@@ -337,7 +380,6 @@
       title.textContent = text;
     }
 
-    // Runtime helpers
     let currentRequestId = null;
     let isGenerating = false;
 
@@ -408,7 +450,6 @@
 
     btnSend.addEventListener("click", () => {
       if (isGenerating) {
-        // Stop
         if (currentRequestId) {
           chrome.runtime.sendMessage({ type: "overlay.chat.abort", requestId: currentRequestId });
         }
@@ -438,18 +479,33 @@
       });
     });
 
-    if (initialPrompt) setStatus("Готово к отправке. Нажми Send.");
+    if (initialPrompt) {
+      if (config.autoSend) {
+        // Auto-send: show user message and trigger request immediately
+        sendChat(initialPrompt);
+      } else {
+        setStatus("Готово к отправке. Нажми Send.");
+      }
+    } else {
+      requestHistory();
+    }
 
     textarea.focus();
-    // Load history after creation
-    requestHistory();
 
     host._sendToAi = {
       addMessage,
       clearMessages,
       setStatus,
       setTitle,
-      setPrompt: (prompt) => { textarea.value = prompt; textarea.focus(); setStatus("Промпт обновлён"); },
+      applyConfig: (cfg) => applyOverlayConfig(overlay, cfg),
+      setPrompt: (prompt, opts = {}) => {
+        textarea.value = prompt;
+        textarea.focus();
+        setStatus("Промпт обновлён");
+        if (opts.autoSend) {
+          sendChat(prompt);
+        }
+      },
       focus: () => textarea.focus(),
       expand: () => overlay.classList.remove("minimized"),
       sendChat
@@ -458,17 +514,28 @@
     return host;
   }
 
-  function ensureFloatingOverlay(prompt = "") {
+  function ensureFloatingOverlay(prompt = "", config = {}) {
+    // config may be { overlayMode, model, autoSend } or direct overlayMode
+    const overlayConfig = config.overlayMode ? config : { overlayMode: config, autoSend: config.autoSend, model: config.model };
     let host = getHost();
     if (host) {
       if (host._sendToAi) {
         host._sendToAi.expand();
-        if (prompt) host._sendToAi.setPrompt(prompt);
-        host._sendToAi.focus();
+        if (host._sendToAi.applyConfig && overlayConfig.overlayMode) {
+          host._sendToAi.applyConfig(overlayConfig.overlayMode);
+        } else if (host._sendToAi.applyConfig && config.width) {
+          host._sendToAi.applyConfig(config);
+        }
+        if (prompt) {
+          host._sendToAi.setPrompt(prompt, { autoSend: !!overlayConfig.autoSend });
+          if (!overlayConfig.autoSend) host._sendToAi.focus();
+        } else {
+          host._sendToAi.focus();
+        }
       }
       return host;
     }
-    return createOverlay(prompt);
+    return createOverlay(prompt, { overlayMode: overlayConfig.overlayMode || config, model: overlayConfig.model, autoSend: !!overlayConfig.autoSend });
   }
 
   function closeFloatingOverlay() {
@@ -484,13 +551,13 @@
     chrome.runtime?.onMessage?.addListener((msg, sender, sendResponse) => {
       if (!msg || typeof msg.type !== "string") return false;
       if (msg.type === "overlay.open") {
-        ensureFloatingOverlay(msg.prompt || "");
+        ensureFloatingOverlay(msg.prompt || "", { overlayMode: msg.overlayMode, model: msg.model, autoSend: !!msg.autoSend });
         sendResponse({ ok: true });
         return true;
       }
       if (msg.type === "overlay.prompt") {
-        const host = ensureFloatingOverlay(msg.prompt || "");
-        if (host?._sendToAi && msg.prompt) host._sendToAi.setPrompt(msg.prompt);
+        const host = ensureFloatingOverlay(msg.prompt || "", { overlayMode: msg.overlayMode, model: msg.model, autoSend: !!msg.autoSend });
+        if (host?._sendToAi && msg.prompt && !msg.autoSend) host._sendToAi.setPrompt(msg.prompt, { autoSend: false });
         sendResponse({ ok: true });
         return true;
       }
@@ -499,7 +566,6 @@
         sendResponse({ ok: true });
         return true;
       }
-      // Responses from background for chat streaming (future) — ignore here, handled via sendMessage callback
       return false;
     });
   } catch {}
