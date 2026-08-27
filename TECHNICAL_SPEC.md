@@ -8,14 +8,17 @@
 
 Все изменения должны внедряться постепенно. Каждый этап обязан оставлять проект в рабочем состоянии.
 
-## 2. Текущее состояние (v4.5)
+## 2. Текущее состояние (v4.6 overlay beta, ветка `feature/floating-ai-overlay`)
 
 Расширение поддерживает 12 сервисов: **ChatGPT, Qwen AI, Grok, Google Gemini, Google AI Studio, Claude, DeepSeek, Z.ai, Kimi AI, Ernie, Minimax, StepFun**.
 
-Реализовано:
+Реализовано (v4.5 + overlay):
 
 - отправка выделенного текста в любой из поддерживаемых сервисов из контекстного меню;
-- переиспользование уже открытой вкладки сервиса (фокус + вставка) либо открытие новой вкладки;
+- переиспользование уже открытой вкладки сервиса (фокус + вставка) либо открытие новой вкладки (legacy);
+- **плавающий AI-оверлей** поверх текущей страницы (Shadow DOM, `floating-overlay.js` 460×620, drag/resize, один overlay на вкладку, `chrome.scripting.executeScript`, без `chrome.windows.create`/iframe);
+- **OpenAI-compatible transport** (`ai-transport.js` + `ai-provider-openai-compatible.js` `POST /v1/chat/completions`, `AbortController` Stop, `optional_host_permissions`);
+- **история диалога** на вкладку (`overlay-state.js` `chrome.storage.session`, 30 сообщений/50k символов, `rememberConversation`, `Новый чат`);
 - автоматическая вставка текста с запасными стратегиями: paste-first для React/contenteditable-сервисов с ожиданием асинхронного commit до 800 мс, fallback к `execCommand`/`textContent`, повторная проверка через `settleMs` и защита от дублирования в уже открытой вкладке;
 - статус вставки через badge на иконке расширения (`OK` / `ERR`);
 - закреплённые сервисы **ChatGPT**, **Qwen AI** и **Grok** с вложенными командами: отправка, перевод на русский, саммари, фактчекинг;
@@ -24,10 +27,11 @@
 - пользовательские команды с prompt-шаблонами и переменными `{selection}`, `{url}`, `{title}`, `{date}`, `{service}`, `{pageText}`, `{youtubeUrl}`;
 - извлечение видимого текста текущей страницы для переменной `{pageText}`;
 - профили команд: базовый, маркетинг, редактура, перевод, исследование, YouTube, Hermes Agent;
-- импорт и экспорт настроек в JSON с нормализацией;
+- импорт и экспорт настроек в JSON с нормализацией (schema 2, `secretsIncluded:false`, `apiKey` в `chrome.storage.local`);
 - журнал диагностики последних ошибок без сохранения текста prompt;
 - пять редактируемых YouTube-шаблонов: статья, краткое резюме, список фактов, Telegram-пост, тезисы для исследования — с выбором сервиса и переменной `{youtubeUrl}`;
 - интерфейс настроек с вкладками, поиском, массовым переключением видимости и светлой/тёмной темой;
+- **режим открытия AI** (`interactionMode` `legacy`/`overlay`, `overlayMode` `autoSend`/`theme`/`rememberConversation`, `aiProvider` `baseUrl`/`model`/`temperature` + Test Connection);
 - релизный ZIP-архив одной командой (`npm run build:zip`);
 - автоматическая проверка проекта через GitHub Actions и локально (`npm run check`).
 
@@ -55,6 +59,7 @@
 - **Этап 7. Улучшение диагностики вставки** — статусы ошибок, журнал в `chrome.storage.local`, панель диагностики в настройках, подробная диагностика вставки из `insertion.js`.
 - **Этап 9. Улучшение YouTube-сценариев** — редактируемые шаблоны с пятью сценариями и переменной `{youtubeUrl}`.
 - **Этап 10. Улучшение интерфейса настроек** — вкладки, поиск, массовое переключение, предпросмотр, тема.
+- **Этап 11. Floating AI Overlay** — `floating-overlay.js` Shadow DOM, `overlay-state.js`, `ai-transport.js`/`ai-provider-openai-compatible.js`, `ai-secrets.js`, `interactionMode`/`overlayMode`/`aiProvider`, `optional_host_permissions`.
 
 ## 5. Дорожная карта (нереализованные задачи)
 

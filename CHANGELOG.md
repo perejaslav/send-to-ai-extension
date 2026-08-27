@@ -4,6 +4,25 @@
 
 Формат основан на идее Keep a Changelog, но адаптирован под практическое ведение небольшого браузерного расширения.
 
+## v4.6 (overlay beta, ветка `feature/floating-ai-overlay`)
+
+### Added
+
+- **Floating AI Overlay** (`floating-overlay.js` Shadow DOM, `host #send-to-ai-floating-overlay-host`, `chrome.scripting.executeScript`, один overlay на вкладку, `position:fixed right20 bottom20` `460×620` `360×400` min `min(800,90vw)/min(900,90vh)` max, `z-index 2147483646`, drag за header с clamp 40px, `resize:both`, кнопки `—`/`×`/`Новый чат`);
+- **AI transport** (`ai-transport.js` + `ai-provider-openai-compatible.js` `POST /v1/chat/completions` `model/messages/temperature`, `Authorization: Bearer`, `AbortController` для `Stop`, без `iframe`/`chrome.windows.create`);
+- **История диалога** (`overlay-state.js` `chrome.storage.session` `sendToAiOverlayHistory` на `tabId`, `trim 30/50k`, `rememberConversation`, восстановление после reload, `display:none` для system);
+- **Безопасность API key** (`ai-secrets.js` `chrome.storage.local` `sendToAiSecrets`, не в `sync`/экспорте `secretsIncluded:false`, не в diagnostics/console/DOM, `textContent` для ответов);
+- **Настройки overlay** (`settings.js` `interactionMode` `legacy`/`overlay` (default `legacy`), `overlayMode` `width/height/autoSend/rememberConversation/theme`, `aiProvider` `type/baseUrl/model/temperature` + `optional_host_permissions` `https://*/*`);
+- **UI настроек** (`options.html` `Режим открытия AI` radio + `AI для мини-чата` Base URL/Model/API Key password+show/temperature/theme/width/height/autoSend/remember + `Проверить подключение` `Reply exactly with: OK` + permission request для origin);
+- **Роутинг** (`background.js` `dispatchPrompt` `isInjectableUrl` `injectFloatingOverlay` `overlay.chat.send/history/clear/abort` + `ai.testConnection`, `unsupported_page` badge, `textContent` без `innerHTML`);
+- **Тесты** (`test/overlay-settings.test.js`, `test/ai-provider.test.js`, `test/overlay-routing.test.js`, `test/settings-transfer.test.js`).
+
+### Changed
+
+- `settings.js` `SETTINGS_STORAGE_KEYS` + `interactionMode`/`overlayMode`/`aiProvider` нормализация, `buildDefaultSettings` включает новые поля.
+- `background.js` выбор `legacy` (старый `openAndInsertText`) vs `overlay` (inject overlay с готовым prompt из `custom-commands.js`/`context-prompts.js`/`youtube-templates.js` без дублирования).
+- `options.js` `EXPORT_SCHEMA_VERSION=2` включает новые поля, `secretsIncluded:false`, импорт не трогает `apiKey`.
+
 ## v4.5
 
 ### Changed

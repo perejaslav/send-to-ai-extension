@@ -5,7 +5,7 @@
 ## Возможности
 
 - Отправка выделенного текста в AI из контекстного меню
-- Повторное использование уже открытой вкладки AI
+- Повторное использование уже открытой вкладки AI (legacy) или мини-чат поверх страницы (overlay, Shadow DOM)
 - Автоматическая вставка текста в поле ввода с запасными стратегиями
 - ChatGPT, Qwen AI и Grok закреплены первыми пунктами меню с вложенными командами
 - Остальные сервисы можно включать, отключать и менять местами
@@ -14,11 +14,12 @@
 - Пользовательские команды с собственными prompt-шаблонами
 - Профили пользовательских команд: базовый, маркетинг, редактура, перевод, исследование, YouTube и Hermes Agent
 - Извлечение видимого текста текущей страницы для команд с переменной `{pageText}`
-- Импорт и экспорт настроек в JSON
+- Импорт и экспорт настроек в JSON (API key не экспортируется, `secretsIncluded:false`)
 - Журнал диагностики последних ошибок без сохранения текста prompt
 - Светлая и тёмная тема страницы настроек
 - Статус вставки через badge на иконке расширения (`OK` / `ERR`)
 - Быстрый popup для отправки выделенного текста и запуска команд
+- Плавающий AI-оверлей 460×620 (360–800 × 400–900, drag/resize, Shadow DOM, `z-index 2147483646`) с OpenAI-compatible API, историей на вкладку (`chrome.storage.session`, 30 сообщений/50k символов), abort через `AbortController` и `Stop`
 
 ## Поддерживаемые AI-сервисы
 
@@ -180,6 +181,17 @@ Send to AI
 
 Выбор темы сохраняется сразу и применяется при следующем открытии настроек.
 
+### Мини-чат поверх страницы (Overlay)
+
+1. Открой настройки → **Основное** → **Режим открытия AI** → выбери **Мини-чат поверх текущей страницы** (по умолчанию `legacy` для совместимости)
+2. В блоке **AI для мини-чата** укажи `Base URL` (например `https://api.openai.com/v1`), `Model` (например `gpt-4o`), `temperature` и `API Key` (хранится в `chrome.storage.local`, не экспортируется, поле `type=password` с кнопкой Показать/Скрыть)
+3. Нажми **Проверить подключение** — отправится `Reply exactly with: OK`, при успехе `✓ Подключение работает`, при ошибке показывается `HTTP 401/403/404`, `Network error` и т.д.
+4. При первом вызове для `Base URL` будет запрошено `optional_host_permissions` для `origin/*` — без разрешения запрос не выполняется
+5. Выдели текст → `Send to AI` → выбери любую команду — на текущей странице появится панель 460×620 (`min 360×400, max min(800,90vw)/min(900,90vh)`, `right 20 bottom 20`, `z-index 2147483646`, Shadow DOM) — повторный вызов не создаёт вторую панель, а обновляет prompt и разворачивает
+6. Панель перетаскивается за header (минимум 40px header остаётся в viewport), ресайз через `resize:both`, кнопки `—` (минимизировать до header) и `×` (удалить из DOM, история сохраняется если `rememberConversation:true`)
+7. Внизу `textarea` + `Send` (`Enter` отправка, `Shift+Enter` новая строка, `Esc` минимизировать), во время генерации `Send→Stop` отменяет через `AbortController`
+8. Сообщения рендерятся через `textContent` (без `innerHTML`), роли `user`/`assistant` (`Ты`/`AI`), история до 30 сообщений/50k символов хранится в `chrome.storage.session` на вкладку, кнопка **Новый чат** очищает
+
 ### Диагностика
 
 1. Открой настройки расширения
@@ -216,12 +228,16 @@ Send to AI
   - для React/contenteditable-сервисов (ChatGPT, Qwen, Grok, Claude, DeepSeek, Ernie, Kimi, Minimax, StepFun) применяется **paste-first**: синтетическое paste-событие, затем ожидание асинхронного commit фреймворка до 800 мс перед fallback к `execCommand`/`textContent`;
   - повторные попытки защищены от повторного входа, а идемпотентная проверка уже вставленного текста исключает дублирование в уже открытой вкладке;
   - после вставки значение перепроверяется через `settleMs`, если фреймворк затёр текст, попытка повторяется.
+- **Floating overlay** (`floating-overlay.js` Shadow DOM, `host #send-to-ai-floating-overlay-host`, `chrome.scripting.executeScript`, один overlay на вкладку, `position:fixed right20 bottom20`, `460×620` `360×400` min `min(800,90vw)/min(900,90vh)` max, `z-index 2147483646`, drag за header с clamp 40px, `resize:both`, `—`/`×`, `Новый чат`)
+- **AI transport** (`ai-transport.js` + `ai-provider-openai-compatible.js` `POST /v1/chat/completions` `model/messages/temperature`, `Authorization: Bearer`, `AbortController` Stop, без `iframe`, без `chrome.windows.create`, без Side Panel)
+- **Conversation state** (`overlay-state.js` `chrome.storage.session` `sendToAiOverlayHistory` на `tabId`, `trim 30 msgs/50k chars`, `rememberConversation`)
+- **Безопасность** (`ai-secrets.js` `chrome.storage.local` `sendToAiSecrets` `apiKey`, не в `sync`/экспорте (`secretsIncluded:false`), не в diagnostics/console/DOM, `textContent` для ответов, `optional_host_permissions` `https://*/*` runtime запрос для origin)
 - **Строгая валидация YouTube-хостов** и очистка URL
 - **Редактируемые YouTube-шаблоны** с переменной `{youtubeUrl}` и выбором сервиса
 - **Пользовательские prompt-шаблоны** с переменными контекста
 - **Профили команд** с фильтрацией пользовательских команд в меню
 - **Извлечение видимого текста страницы** с ограничением длины
-- **Экспорт и импорт настроек** через JSON с версией схемы
+- **Экспорт и импорт настроек** через JSON с версией схемы 2 (`interactionMode/overlayMode/aiProvider` без `apiKey`)
 - **Диагностика ошибок** через `chrome.storage.local` без сохранения prompt
 - **Тема страницы настроек** через `chrome.storage.local` и атрибут `data-options-theme`
 
@@ -229,9 +245,11 @@ Send to AI
 
 - `contextMenus` - создание пунктов контекстного меню
 - `tabs` - поиск, активация и фокус вкладок
-- `scripting` - инъекция скриптов вставки и извлечения текста страницы
+- `scripting` - инъекция `floating-overlay.js` и извлечения текста страницы
 - `activeTab` - быстрый доступ к выделению в текущей вкладке из popup
-- Точные host permissions только для поддерживаемых доменов AI-сервисов
+- `storage` - `sync` (настройки), `local` (apiKey), `session` (история оверлея)
+- `optional_host_permissions` `https://*/*` `http://*/*` — запрос только для origin выбранного AI endpoint (не `<all_urls>` постоянный)
+- Точные host permissions только для поддерживаемых доменов AI-сервисов (legacy)
 
 ## Структура проекта
 
@@ -241,6 +259,11 @@ send-to-ai-extension/
 |- background.js
 |- services.js
 |- settings.js
+|- ai-secrets.js
+|- ai-transport.js
+|- ai-provider-openai-compatible.js
+|- overlay-state.js
+|- floating-overlay.js
 |- menus.js
 |- youtube.js
 |- youtube-templates.js
@@ -266,6 +289,7 @@ send-to-ai-extension/
 |- scripts/
 |  |- build-zip.js
 |- test/
+|  |- ai-provider.test.js
 |  |- context-prompts.test.js
 |  |- custom-commands.test.js
 |  |- diagnostics.test.js
@@ -273,8 +297,11 @@ send-to-ai-extension/
 |  |- menus.test.js
 |  |- options-theme.test.js
 |  |- options-ui-core.test.js
+|  |- overlay-routing.test.js
+|  |- overlay-settings.test.js
 |  |- profiles.test.js
 |  |- services-profiles.test.js
+|  |- settings-transfer.test.js
 |  |- settings.test.js
 |  |- youtube-templates.test.js
 |  |- youtube.test.js
