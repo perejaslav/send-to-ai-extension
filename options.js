@@ -15,11 +15,12 @@ import {
   normalizeActiveProfileIds,
   normalizeCommandProfileIds
 } from "./profiles.js";
-import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings, normalizeInteractionMode, normalizeOverlayMode, normalizeAiProvider } from "./settings.js";
+import { DEFAULT_SETTINGS, normalizeSettings, normalizeInteractionMode, normalizeOverlayMode, normalizeAiProvider } from "./settings.js";
 import { CONTEXT_ACTIONS_QWEN, CONTEXT_ACTIONS_GROK, SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
 import { getApiKey, setApiKey } from "./ai-secrets.js";
 import { getYouTubeTemplates, setYouTubeTemplates } from "./youtube-options.js";
 import { normalizeYouTubeTemplates } from "./youtube-templates.js";
+import { loadSettingsFromStorage, saveSettingsToStorage } from "./settings-storage.js";
 
 const EXPORT_SCHEMA_VERSION = 2;
 const PINNED_SERVICE_IDS = ["sendToChatGPT", "sendToQwen", "sendToGrok"];
@@ -106,16 +107,7 @@ const state = {
 let draggedServiceId = null;
 
 function loadStoredSettings() {
-  return new Promise((resolve, reject) => {
-    chrome.storage.sync.get(SETTINGS_STORAGE_KEYS, (storedSettings) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve(storedSettings);
-    });
-  });
+  return loadSettingsFromStorage();
 }
 
 async function saveApiKey() {
@@ -126,7 +118,7 @@ async function saveApiKey() {
   }
 }
 
-function saveSettings() {
+async function saveSettings() {
   // Sync YouTube templates from dedicated editor (single source after edits)
   try {
     state.settings.youtubeTemplates = normalizeYouTubeTemplates(getYouTubeTemplates());
@@ -134,56 +126,40 @@ function saveSettings() {
     // keep existing
   }
 
-  // Normalize overlay/aiProvider before save
+  // Normalize before save
   state.settings.interactionMode = normalizeInteractionMode(state.settings.interactionMode);
   state.settings.overlayMode = normalizeOverlayMode(state.settings.overlayMode);
   state.settings.aiProvider = normalizeAiProvider(state.settings.aiProvider);
+  state.settings.youtubeTemplates = normalizeYouTubeTemplates(state.settings.youtubeTemplates);
+  state.settings.customCommands = normalizeCustomCommands(state.settings.customCommands, state.settings.serviceOrder);
+  state.settings.activeProfileIds = normalizeActiveProfileIds(state.settings.activeProfileIds);
 
   // Persist secrets separately (not in sync)
-  saveApiKey().catch(() => {});
+  await saveApiKey().catch(() => {});
 
   // Request optional host permission for AI endpoint if baseUrl present
   if (state.settings.aiProvider.baseUrl) {
     try {
       const origin = new URL(state.settings.aiProvider.baseUrl).origin + "/*";
-      chrome.permissions?.contains?.({ origins: [origin] }, (has) => {
-        if (!has && !chrome.runtime.lastError) {
-          chrome.permissions.request({ origins: [origin] }, () => {
-            if (chrome.runtime.lastError) {
-              console.warn("permission request:", chrome.runtime.lastError.message);
-            }
-          });
-        }
+      const has = await new Promise((resolve) => {
+        if (!chrome.permissions?.contains) { resolve(true); return; }
+        chrome.permissions.contains({ origins: [origin] }, (result) => {
+          if (chrome.runtime.lastError) resolve(true);
+          else resolve(result);
+        });
       });
+      if (!has) {
+        await new Promise((resolve) => {
+          chrome.permissions.request({ origins: [origin] }, (granted) => {
+            if (chrome.runtime.lastError) resolve(false);
+            else resolve(granted);
+          });
+        });
+      }
     } catch {}
   }
 
-  return new Promise((resolve, reject) => {
-    chrome.storage.sync.set({
-      serviceOrder: state.settings.serviceOrder,
-      enabledServices: state.settings.enabledServices,
-      defaultServiceId: state.settings.defaultServiceId,
-      showSpecialActions: state.settings.showSpecialActions !== false,
-      enabledSpecialActions: state.settings.enabledSpecialActions,
-      showContextActionsQwen: state.settings.showContextActionsQwen !== false,
-      enabledContextActionsQwen: state.settings.enabledContextActionsQwen,
-      showContextActionsGrok: state.settings.showContextActionsGrok !== false,
-      enabledContextActionsGrok: state.settings.enabledContextActionsGrok,
-      customCommands: state.settings.customCommands,
-      activeProfileIds: state.settings.activeProfileIds,
-      youtubeTemplates: state.settings.youtubeTemplates,
-      interactionMode: state.settings.interactionMode,
-      overlayMode: state.settings.overlayMode,
-      aiProvider: state.settings.aiProvider
-    }, () => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve();
-    });
-  });
+  await saveSettingsToStorage(state.settings);
 }
 
 function getServiceTitle(serviceId) {

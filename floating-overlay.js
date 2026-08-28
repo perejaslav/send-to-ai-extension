@@ -290,7 +290,17 @@
     btnClear.type = "button";
     btnClear.textContent = "Новый чат";
     btnClear.title = "Очистить историю";
-    toolbar.append(btnClear);
+    const btnSettings = document.createElement("button");
+    btnSettings.type = "button";
+    btnSettings.textContent = "⚙ Настройки";
+    btnSettings.title = "Открыть настройки";
+    const modeIndicator = document.createElement("span");
+    modeIndicator.textContent = "Interaction mode: overlay";
+    modeIndicator.style.fontSize = "11px";
+    modeIndicator.style.color = "#64748b";
+    modeIndicator.style.marginLeft = "auto";
+    modeIndicator.style.alignSelf = "center";
+    toolbar.append(btnClear, btnSettings, modeIndicator);
 
     const messages = document.createElement("div");
     messages.className = "messages";
@@ -475,6 +485,15 @@
         setStatus("Чат очищен");
         setTimeout(() => setStatus(""), 1500);
       });
+    });
+
+    btnSettings.addEventListener("click", () => {
+      try {
+        chrome.runtime.sendMessage({ type: "openOptionsPage" });
+      } catch {}
+      try {
+        chrome.runtime.openOptionsPage();
+      } catch {}
     });
 
     // Ordered init: history first, then prompt (prevents race where history clears new message)

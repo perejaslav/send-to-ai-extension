@@ -24,6 +24,7 @@ import { getApiKey } from "./ai-secrets.js";
 import { sendChatRequest } from "./ai-transport.js";
 import { getOverlayHistory, appendOverlayMessage, clearOverlayHistory, trimHistory } from "./overlay-state.js";
 import { buildOverlayConfig, decideInteractionRoute } from "./overlay-routing.js";
+import { loadSettingsFromStorage } from "./settings-storage.js";
 
 const ACTION_DEFAULT_TITLE = "Send to AI";
 const STATUS_CLEAR_DELAY_MS = 5000;
@@ -149,10 +150,9 @@ function executePageExtraction(tabId) {
 
 async function loadSettings() {
   try {
-    const storedSettings = await storageGet(SETTINGS_STORAGE_KEYS);
-    return normalizeSettings(storedSettings);
+    return await loadSettingsFromStorage();
   } catch (error) {
-    console.warn("storage.sync.get error:", error.message);
+    console.warn("loadSettings error:", error.message);
     return DEFAULT_SETTINGS;
   }
 }
@@ -742,12 +742,55 @@ chrome.runtime.onStartup.addListener(() => {
   clearActionStatus();
 });
 
+chrome.action.onClicked.addListener(async (tab) => {
+  const settings = await loadSettings();
+  if (settings.interactionMode === "overlay") {
+    if (!tab?.id || !isInjectableUrl(tab.url)) {
+      chrome.action.setBadgeBackgroundColor({ color: "#b91c1c" });
+      chrome.action.setBadgeText({ text: "ERR" });
+      chrome.action.setTitle({ title: "Мини-чат нельзя открыть на системной странице браузера." });
+      setTimeout(clearActionStatus, STATUS_CLEAR_DELAY_MS);
+      return;
+    }
+    const config = buildOverlayConfig(settings, null);
+    const result = await injectFloatingOverlay(tab.id, "", config);
+    if (result.status === "success") {
+      chrome.action.setBadgeBackgroundColor({ color: "#166534" });
+      chrome.action.setBadgeText({ text: "OK" });
+      chrome.action.setTitle({ title: "Мини-чат открыт" });
+      setTimeout(clearActionStatus, STATUS_CLEAR_DELAY_MS);
+    } else {
+      chrome.action.setBadgeBackgroundColor({ color: "#b91c1c" });
+      chrome.action.setBadgeText({ text: "ERR" });
+      chrome.action.setTitle({ title: result.message || "Не удалось открыть мини-чат" });
+      setTimeout(clearActionStatus, STATUS_CLEAR_DELAY_MS);
+    }
+    return;
+  }
+  chrome.runtime.openOptionsPage();
+});
+
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "sync") {
+  if (areaName !== "sync" && areaName !== "local") {
     return;
   }
 
-  const shouldRebuild = SETTINGS_STORAGE_KEYS.some((key) => Object.prototype.hasOwnProperty.call(changes, key));
+  const MENU_REBUILD_KEYS = [
+    "serviceOrder",
+    "enabledServices",
+    "defaultServiceId",
+    "showSpecialActions",
+    "enabledSpecialActions",
+    "showContextActionsQwen",
+    "enabledContextActionsQwen",
+    "showContextActionsGrok",
+    "enabledContextActionsGrok",
+    "customCommands",
+    "activeProfileIds",
+    "youtubeTemplates"
+  ];
+
+  const shouldRebuild = MENU_REBUILD_KEYS.some((key) => Object.prototype.hasOwnProperty.call(changes, key));
   if (shouldRebuild) {
     rebuildContextMenus();
   }
@@ -1141,4 +1184,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   })();
 
   return true;
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "openOptionsPage") {
+    try { chrome.runtime.openOptionsPage(); } catch {}
+    sendResponse({ ok: true });
+    return true;
+  }
+  return false;
 });
