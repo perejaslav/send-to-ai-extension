@@ -16,7 +16,7 @@ import {
   normalizeCommandProfileIds
 } from "./profiles.js";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
-import { CONTEXT_ACTIONS_QWEN, CONTEXT_ACTIONS_GROK, SERVICE_CONFIGS, SPECIAL_ACTIONS } from "./services.js";
+import { CONTEXT_ACTIONS_QWEN, CONTEXT_ACTIONS_GROK, SERVICE_CONFIGS, SPECIAL_ACTIONS, getCompactSpecialActionTitle } from "./services.js";
 
 const EXPORT_SCHEMA_VERSION = 1;
 const PINNED_SERVICE_IDS = ["sendToChatGPT", "sendToQwen", "sendToGrok"];
@@ -389,20 +389,6 @@ function renderActiveProfilesList() {
     label.append(checkbox, text);
     activeProfilesListElement.append(label);
   }
-}
-
-function getCompactSpecialActionTitle(action) {
-  const titles = {
-    sendAndTranslateToQwen: "Перевести на русский",
-    sendAndTranslateToChatGPT: "Перевести на русский",
-    sendAndTranslateToGrok: "Перевести на русский",
-    summarizeInChatGPT: "Сделать саммари",
-    summarizeInGrok: "Сделать саммари",
-    factCheckInChatGPT: "Провести фактчекинг",
-    factCheckInGrok: "Провести фактчекинг"
-  };
-
-  return titles[action.id] || action.title;
 }
 
 function renderActionGroup(serviceId, actions) {

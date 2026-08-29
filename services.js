@@ -218,6 +218,54 @@ export const SPECIAL_ACTIONS = [
       "Ты - профессиональный переводчик. Переведи на русский язык с сохранением структуры абзацев и минимальной литературной обработкой.\n\nСохрани термины, числовые данные, имена и форматирование. Адаптируй идиомы и культурные отсылки. Не добавляй пояснений и комментариев от себя.\n\n" + selectedText
   },
   {
+    id: "summarizeInQwen",
+    title: "Сделать саммари в Qwen",
+    serviceId: "sendToQwen",
+    transformText: (selectedText) =>
+      "Без вступительного текста. Сделай краткое саммари --- \n\n" + selectedText
+  },
+  {
+    id: "factCheckInQwen",
+    title: "Провести фактчекинг в Qwen",
+    serviceId: "sendToQwen",
+    transformText: (selectedText) =>
+      `Проведи фактчекинг утверждений только из текста ниже.
+
+Требования к ответу:
+
+Разбей проверку на отдельные утверждения.
+Для каждого утверждения используй следующий формат:
+
+🔹 Утверждение:
+(цитата или краткий пересказ)
+
+📌 Статус:
+✅ Верно / 🟡 Частично верно / ❌ Неверно / ⚪ Недостаточно данных
+
+📖 Краткое обоснование:
+2–5 предложений без лишней воды. Только проверяемые факты и суть.
+
+🔍 Что важно уточнить:
+Какие детали требуют дополнительной проверки, контекста или конкретизации.
+
+📚 Источники/основание:
+Укажи, на каких данных или научном консенсусе основан вывод. Не выдумывай источники.
+
+Дополнительные правила:
+
+- Не пересказывай весь исходный текст.
+- Не пиши длинных вступлений и выводов.
+- Если утверждение спорное среди историков/учёных — явно укажи это.
+- Если данных недостаточно — прямо так и напиши.
+- Не объединяй несколько утверждений в одно.
+- Сохраняй максимально наглядную структуру и короткие абзацы.
+- В конце добавь краткий общий вывод о степени достоверности текста в целом (1–3 предложения).
+
+---
+
+` + selectedText
+  },
+  {
     id: "sendAndTranslateToChatGPT",
     title: "Отправить и перевести в ChatGPT",
     serviceId: "sendToChatGPT",
@@ -390,6 +438,22 @@ export const CONTEXT_ACTIONS = [
 
 export const SERVICES_BY_ID = Object.fromEntries(SERVICE_CONFIGS.map((service) => [service.id, service]));
 export const SPECIAL_ACTIONS_BY_ID = Object.fromEntries(SPECIAL_ACTIONS.map((action) => [action.id, action]));
+
+export const SPECIAL_ACTION_COMPACT_TITLES = {
+  sendAndTranslateToQwen: "Перевести на русский",
+  sendAndTranslateToChatGPT: "Перевести на русский",
+  sendAndTranslateToGrok: "Перевести на русский",
+  summarizeInQwen: "Сделать саммари",
+  summarizeInChatGPT: "Сделать саммари",
+  summarizeInGrok: "Сделать саммари",
+  factCheckInQwen: "Провести фактчекинг",
+  factCheckInChatGPT: "Провести фактчекинг",
+  factCheckInGrok: "Провести фактчекинг"
+};
+
+export function getCompactSpecialActionTitle(action) {
+  return SPECIAL_ACTION_COMPACT_TITLES[action.id] || action.title;
+}
 export const CONTEXT_ACTIONS_QWEN = [
   {
     id: "pageSummaryInQwen",

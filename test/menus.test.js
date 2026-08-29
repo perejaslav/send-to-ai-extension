@@ -55,6 +55,48 @@ test("buildMenuDescriptors groups special actions under their services", () => {
   const qwenAction = descriptors.find((item) => item.id === "sendAndTranslateToQwen");
   assert.equal(qwenAction.parentId, "sendToQwenMenu");
   assert.equal(qwenAction.title, "Перевести на русский");
+
+  const qwenSummary = descriptors.find((item) => item.id === "summarizeInQwen");
+  assert.equal(qwenSummary.parentId, "sendToQwenMenu");
+  assert.equal(qwenSummary.title, "Сделать саммари");
+
+  const qwenFactCheck = descriptors.find((item) => item.id === "factCheckInQwen");
+  assert.equal(qwenFactCheck.parentId, "sendToQwenMenu");
+  assert.equal(qwenFactCheck.title, "Провести фактчекинг");
+});
+
+test("buildMenuDescriptors gives Qwen the same pinned commands as ChatGPT and Grok", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToChatGPT", "sendToQwen", "sendToGrok"],
+    enabledServices: { sendToChatGPT: true, sendToQwen: true, sendToGrok: true },
+    defaultServiceId: "sendToQwen",
+    showSpecialActions: true
+  });
+
+  for (const menuId of ["sendToChatGPTMenu", "sendToQwenMenu", "sendToGrokMenu"]) {
+    const childIds = descriptors.filter((item) => item.parentId === menuId).map((item) => item.id);
+
+    assert.equal(childIds.length, 4, `${menuId} should have 4 items`);
+  }
+
+  const compactTitlesByMenu = {};
+  for (const menuId of ["sendToChatGPTMenu", "sendToQwenMenu", "sendToGrokMenu"]) {
+    compactTitlesByMenu[menuId] = descriptors
+      .filter((item) => item.parentId === menuId)
+      .map((item) => item.title)
+      .sort();
+  }
+
+  assert.deepEqual(
+    compactTitlesByMenu.sendToQwenMenu,
+    compactTitlesByMenu.sendToChatGPTMenu,
+    "Qwen submenu titles should match ChatGPT submenu titles"
+  );
+  assert.deepEqual(
+    compactTitlesByMenu.sendToQwenMenu,
+    compactTitlesByMenu.sendToGrokMenu,
+    "Qwen submenu titles should match Grok submenu titles"
+  );
 });
 
 test("buildMenuDescriptors prioritizes ChatGPT and Qwen before other services", () => {

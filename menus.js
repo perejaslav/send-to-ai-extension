@@ -18,7 +18,8 @@ import {
   SERVICE_CONFIGS,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS,
-  YOUTUBE_MENU_IDS
+  YOUTUBE_MENU_IDS,
+  getCompactSpecialActionTitle
 } from "./services.js";
 import { normalizeYouTubeTemplates } from "./youtube-templates.js";
 
@@ -80,20 +81,6 @@ function buildYouTubeTemplateDescriptors(settings) {
         "*://youtu.be/*"
       ]
     }));
-}
-
-function getCompactSpecialActionTitle(action) {
-  const titles = {
-    sendAndTranslateToQwen: "Перевести на русский",
-    sendAndTranslateToChatGPT: "Перевести на русский",
-    sendAndTranslateToGrok: "Перевести на русский",
-    summarizeInChatGPT: "Сделать саммари",
-    summarizeInGrok: "Сделать саммари",
-    factCheckInChatGPT: "Провести фактчекинг",
-    factCheckInGrok: "Провести фактчекинг"
-  };
-
-  return titles[action.id] || action.title;
 }
 
 function getVisibleSpecialActionsByService(settings) {

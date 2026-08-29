@@ -27,7 +27,7 @@ Current version: **4.5.1**. In Yandex Browser the extension's service worker run
 | Service | Features |
 |---------|----------|
 | **ChatGPT** | Send, translate to Russian, summary, fact-checking |
-| **Qwen AI** | Send, translate to Russian |
+| **Qwen AI** | Send, translate to Russian, summary, fact-checking |
 | **Grok** | Send, translate to Russian, summary, fact-checking |
 | **Google Gemini** | Send text |
 | **Google AI Studio** | Send text |
