@@ -153,8 +153,8 @@ export const SERVICE_CONFIGS = [
   {
     id: "sendToKimi",
     title: "Kimi AI",
-    urlPattern: "https://www.kimi.com/*",
-    newUrl: "https://www.kimi.com/",
+    urlPattern: "https://www.kimi.ai/*",
+    newUrl: "https://www.kimi.ai/",
     profile: {
       selectors: [
         ".chat-input-editor",
@@ -189,21 +189,6 @@ export const SERVICE_CONFIGS = [
     }
   },
   {
-    id: "sendToErnie",
-    title: "Ernie",
-    urlPattern: "https://ernie.baidu.com/*",
-    newUrl: "https://ernie.baidu.com/chat",
-    profile: {
-      selectors: [
-        '[data-slate-editor="true"]',
-        'div[contenteditable="true"][role="textbox"]',
-        'div[contenteditable="true"]'
-      ],
-      usePasteFirst: true,
-      timeoutMs: 20000
-    }
-  },
-  {
     id: "sendToMinimax",
     title: "Minimax",
     urlPattern: "https://agent.minimax.io/*",
@@ -220,24 +205,6 @@ export const SERVICE_CONFIGS = [
       ],
       usePasteFirst: true,
       timeoutMs: 20000
-    }
-  },
-  {
-    id: "sendToStepFun",
-    title: "StepFun",
-    urlPattern: "https://stepfun.ai/*",
-    newUrl: "https://stepfun.ai/chats/new",
-    profile: {
-      selectors: [
-        '[data-slate-editor="true"]',
-        'div[contenteditable="true"][role="textbox"]',
-        'div[contenteditable="plaintext-only"]',
-        'div[contenteditable="true"]',
-        '[aria-label*="prompt"]',
-        '[aria-label*="message"]',
-        "textarea"
-      ],
-      usePasteFirst: true
     }
   }
 ];

@@ -8,9 +8,9 @@
 
 Все изменения должны внедряться постепенно. Каждый этап обязан оставлять проект в рабочем состоянии.
 
-## 2. Текущее состояние (v4.5)
+## 2. Текущее состояние (v4.5.1)
 
-Расширение поддерживает 12 сервисов: **ChatGPT, Qwen AI, Grok, Google Gemini, Google AI Studio, Claude, DeepSeek, Z.ai, Kimi AI, Ernie, Minimax, StepFun**.
+Расширение поддерживает 10 сервисов: **ChatGPT, Qwen AI, Grok, Google Gemini, Google AI Studio, Claude, DeepSeek, Z.ai, Kimi AI, Minimax**.
 
 Реализовано:
 

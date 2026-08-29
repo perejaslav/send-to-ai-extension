@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Send to AI",
-  "version": "4.5",
-  "version_name": "4.5",
-  "description": "Отправить выделенный текст в AI-ассистенты (Qwen, Ernie, Minimax, Grok, Z.ai, DeepSeek, Claude, Kimi, ChatGPT, Gemini, Google AI Studio)",
+  "version": "4.5.1",
+  "version_name": "4.5.1",
+  "description": "Отправить выделенный текст в AI-ассистенты (Qwen, Minimax, Grok, Z.ai, DeepSeek, Claude, Kimi, ChatGPT, Gemini, Google AI Studio)",
   "permissions": [
     "contextMenus",
     "tabs",
@@ -13,21 +13,18 @@
   ],
   "host_permissions": [
     "https://chat.qwen.ai/*",
-    "https://ernie.baidu.com/*",
     "https://agent.minimax.io/*",
-    "https://stepfun.ai/*",
     "https://grok.com/*",
     "https://chat.z.ai/*",
     "https://chat.deepseek.com/*",
-    "https://www.kimi.com/*",
+    "https://www.kimi.ai/*",
     "https://chatgpt.com/*",
     "https://gemini.google.com/*",
     "https://aistudio.google.com/*",
     "https://claude.ai/*"
   ],
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background.bundle.js"
   },
   "action": {
     "default_title": "Send to AI",

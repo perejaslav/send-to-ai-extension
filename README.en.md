@@ -1,6 +1,8 @@
 ﻿# Send to AI Extension
 
-A Chrome/Edge browser extension that adds context menu commands to quickly send selected text to popular AI assistants.
+A browser extension for Chrome, Edge, and Yandex Browser that adds context menu commands to quickly send selected text to popular AI assistants.
+
+Current version: **4.5.1**. In Yandex Browser the extension's service worker runs from a single bundled file, `background.bundle.js` (Yandex does not support ES-module service workers).
 
 ## Features
 
@@ -33,9 +35,7 @@ A Chrome/Edge browser extension that adds context menu commands to quickly send 
 | **DeepSeek** | Send text |
 | **Z.ai** | Send text |
 | **Kimi AI** | Send text |
-| **Ernie** | Send text |
 | **Minimax** | Send text |
-| **StepFun** | Send text |
 
 ## Service Commands
 
@@ -64,9 +64,7 @@ Send to AI
 |- DeepSeek
 |- Z.ai
 |- Kimi AI
-|- Ernie
 |- Minimax
-|- StepFun
 |- My commands
 |- Pages and links
 |- Pages and links in Qwen
@@ -213,7 +211,7 @@ Import goes through normalization: if the file contains outdated or redundant da
 - **Service-based menu grouping** in the context menu
 - **Pinned priority for ChatGPT, Qwen AI, and Grok** in the service menu
 - **Unified text insertion pipeline** with fallback strategies and result verification:
-  - React/contenteditable services (ChatGPT, Qwen, Grok, Claude, DeepSeek, Ernie, Kimi, Minimax, StepFun) use **paste-first**: a synthetic paste event, then a wait of up to 800 ms for the framework's async commit before falling back to `execCommand`/`textContent`;
+  - React/contenteditable services (ChatGPT, Qwen, Grok, Claude, DeepSeek, Kimi, Minimax) use **paste-first**: a synthetic paste event, then a wait of up to 800 ms for the framework's async commit before falling back to `execCommand`/`textContent`;
   - repeated attempts are guarded against re-entry, and an idempotent already-present check prevents duplicate insertion into an already opened tab;
   - after insertion the value is re-checked after `settleMs`; if the framework wipes the text, the attempt is repeated.
 - **Strict YouTube hostname validation** and URL cleanup
@@ -238,7 +236,8 @@ Import goes through normalization: if the file contains outdated or redundant da
 ```text
 send-to-ai-extension/
 |- manifest.json
-|- background.js
+|- background.js (source, bundled into background.bundle.js)
+|- background.bundle.js (generated service worker, do not edit)
 |- services.js
 |- settings.js
 |- menus.js
