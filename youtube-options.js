@@ -1,4 +1,5 @@
 import { SERVICE_CONFIGS } from "./services.js";
+import { loadSettingsFromStorage, saveSettingsToStorage } from "./settings-storage.js";
 import { normalizeYouTubeTemplates, renderYouTubeTemplate } from "./youtube-templates.js";
 
 const youtubeTemplatesListElement = document.getElementById("youtubeTemplatesList");
@@ -25,35 +26,9 @@ function getServiceTitle(serviceId) {
   return SERVICE_CONFIGS.find((service) => service.id === serviceId)?.title || serviceId;
 }
 
-function storageGet(keys) {
-  return new Promise((resolve, reject) => {
-    chrome.storage.sync.get(keys, (result) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve(result);
-    });
-  });
-}
-
-function storageSet(value) {
-  return new Promise((resolve, reject) => {
-    chrome.storage.sync.set(value, () => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve();
-    });
-  });
-}
-
 async function saveYouTubeTemplates(showMessage = true) {
   state.youtubeTemplates = normalizeYouTubeTemplates(state.youtubeTemplates);
-  await storageSet({ youtubeTemplates: state.youtubeTemplates });
+  await saveSettingsToStorage({ youtubeTemplates: state.youtubeTemplates });
 
   if (showMessage) {
     setStatus("YouTube-шаблоны сохранены", false);
@@ -181,27 +156,13 @@ async function exportSettingsWithYouTubeTemplates(event) {
 
   try {
     await saveYouTubeTemplates(false);
-    const stored = await storageGet([
-      "serviceOrder",
-      "enabledServices",
-      "defaultServiceId",
-      "showSpecialActions",
-      "enabledSpecialActions",
-      "showContextActionsQwen",
-      "enabledContextActionsQwen",
-      "customCommands",
-      "activeProfileIds",
-      "youtubeTemplates"
-    ]);
+    const stored = await loadSettingsFromStorage();
 
     const payload = {
       schemaVersion: 1,
       exportedAt: new Date().toISOString(),
       extension: "send-to-ai-extension",
-      settings: {
-        ...stored,
-        youtubeTemplates: normalizeYouTubeTemplates(stored.youtubeTemplates)
-      }
+      settings: stored
     };
 
     const datePart = new Date().toISOString().slice(0, 10);
@@ -246,7 +207,7 @@ async function importYouTubeTemplatesFromFile(file) {
 async function resetYouTubeTemplatesAfterFullReset() {
   setTimeout(async () => {
     try {
-      const stored = await storageGet(["youtubeTemplates"]);
+      const stored = await loadSettingsFromStorage();
       state.youtubeTemplates = normalizeYouTubeTemplates(stored.youtubeTemplates);
       renderYouTubeTemplates();
     } catch {
@@ -261,7 +222,7 @@ async function initYouTubeTemplates() {
   }
 
   try {
-    const stored = await storageGet(["youtubeTemplates"]);
+    const stored = await loadSettingsFromStorage();
     state.youtubeTemplates = normalizeYouTubeTemplates(stored.youtubeTemplates);
     renderYouTubeTemplates();
   } catch (error) {
