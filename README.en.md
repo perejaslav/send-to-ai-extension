@@ -2,7 +2,7 @@
 
 A browser extension for Chrome, Edge, and Yandex Browser that adds context menu commands to quickly send selected text to popular AI assistants.
 
-Current version: **4.6.1**. In Yandex Browser the extension's service worker runs from a single bundled file, `background.bundle.js` (Yandex does not support ES-module service workers).
+Current version: **4.7**. In Yandex Browser the extension's service worker runs from a single bundled file, `background.bundle.js` (Yandex does not support ES-module service workers).
 
 ## Features
 
