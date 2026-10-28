@@ -15,7 +15,8 @@ import {
   normalizeActiveProfileIds,
   normalizeCommandProfileIds
 } from "./profiles.js";
-import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
+import { DEFAULT_SETTINGS, normalizeSettings } from "./settings.js";
+import { loadSettingsFromStorage, saveSettingsToStorage } from "./settings-storage.js";
 import { CONTEXT_ACTIONS_QWEN, CONTEXT_ACTIONS_GROK, SERVICE_CONFIGS, SPECIAL_ACTIONS, getCompactSpecialActionTitle } from "./services.js";
 
 const EXPORT_SCHEMA_VERSION = 1;
@@ -83,41 +84,20 @@ const state = {
 let draggedServiceId = null;
 
 function loadStoredSettings() {
-  return new Promise((resolve, reject) => {
-    chrome.storage.sync.get(SETTINGS_STORAGE_KEYS, (storedSettings) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve(storedSettings);
-    });
-  });
+  return loadSettingsFromStorage();
 }
 
-function saveSettings() {
-  return new Promise((resolve, reject) => {
-    chrome.storage.sync.set({
-      serviceOrder: state.settings.serviceOrder,
-      enabledServices: state.settings.enabledServices,
-      defaultServiceId: state.settings.defaultServiceId,
-      showSpecialActions: state.settings.showSpecialActions !== false,
-      enabledSpecialActions: state.settings.enabledSpecialActions,
-      showContextActionsQwen: state.settings.showContextActionsQwen !== false,
-      enabledContextActionsQwen: state.settings.enabledContextActionsQwen,
-      showContextActionsGrok: state.settings.showContextActionsGrok !== false,
-      enabledContextActionsGrok: state.settings.enabledContextActionsGrok,
-      customCommands: state.settings.customCommands,
-      activeProfileIds: state.settings.activeProfileIds
-    }, () => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
+// YouTube templates are managed by youtube-options.js; this page only writes
+// them on an explicit import or a full reset, so an open page cannot overwrite
+// newer template edits.
+async function saveSettings({ includeYouTubeTemplates = false } = {}) {
+  const settingsToSave = { ...state.settings };
 
-      resolve();
-    });
-  });
+  if (!includeYouTubeTemplates) {
+    delete settingsToSave.youtubeTemplates;
+  }
+
+  await saveSettingsToStorage(settingsToSave);
 }
 
 function getServiceTitle(serviceId) {
@@ -770,7 +750,7 @@ async function importSettingsFromFile(file) {
     state.settings = normalizedSettings;
     ensureDefaultServiceCompatibility();
     state.selectedCustomCommandId = state.settings.customCommands[0]?.id || null;
-    await saveSettings();
+    await saveSettings({ includeYouTubeTemplates: "youtubeTemplates" in importedSettings });
     render();
     setStatus("Настройки импортированы и сохранены", false);
   } catch (error) {
@@ -789,7 +769,7 @@ async function resetAllSettings() {
   state.settings = structuredClone(DEFAULT_SETTINGS);
   ensureDefaultServiceCompatibility();
   state.selectedCustomCommandId = null;
-  await saveSettings();
+  await saveSettings({ includeYouTubeTemplates: true });
   render();
   setStatus("Все настройки сброшены и сохранены", false);
 }

@@ -7,7 +7,8 @@ import { insertTextIntoPage } from "./insertion.js";
 import { extractVisiblePageText } from "./page-extractor.js";
 import { buildPageOrLinkPrompt } from "./context-prompts.js";
 import { buildMenuDescriptors } from "./menus.js";
-import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
+import { DEFAULT_SETTINGS } from "./settings.js";
+import { LOCAL_SETTINGS_KEYS, SYNC_SETTINGS_KEYS, loadSettingsFromStorage } from "./settings-storage.js";
 import {
   QUICK_DEFAULT_MENU_ID,
   CONTEXT_ACTIONS_BY_ID,
@@ -24,19 +25,6 @@ import { getYouTubeTemplateById, renderYouTubeTemplate } from "./youtube-templat
 const ACTION_DEFAULT_TITLE = "Send to AI";
 const STATUS_CLEAR_DELAY_MS = 5000;
 const PAGE_TEXT_MAX_LENGTH = 30000;
-
-function storageGet(keys) {
-  return new Promise((resolve, reject) => {
-    chrome.storage.sync.get(keys, (result) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve(result);
-    });
-  });
-}
 
 function queryTabs(queryInfo) {
   return new Promise((resolve, reject) => {
@@ -143,12 +131,50 @@ function executePageExtraction(tabId) {
   });
 }
 
+function storageGetLocal(keys) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(keys, (result) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve(result);
+    });
+  });
+}
+
+function storageSetLocal(values) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set(values, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+function storageRemoveSync(keys) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.sync.remove(keys, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
 async function loadSettings() {
   try {
-    const storedSettings = await storageGet(SETTINGS_STORAGE_KEYS);
-    return normalizeSettings(storedSettings);
+    return await loadSettingsFromStorage();
   } catch (error) {
-    console.warn("storage.sync.get error:", error.message);
+    console.warn("settings storage read error:", error.message);
     return DEFAULT_SETTINGS;
   }
 }
@@ -572,11 +598,11 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "sync") {
-    return;
-  }
+  // Sync settings drive context menus; local settings (templates, custom
+  // commands) also end up in menu labels, so both areas are watched.
+  const watchedKeys = areaName === "local" ? LOCAL_SETTINGS_KEYS : SYNC_SETTINGS_KEYS;
+  const shouldRebuild = watchedKeys.some((key) => Object.prototype.hasOwnProperty.call(changes, key));
 
-  const shouldRebuild = SETTINGS_STORAGE_KEYS.some((key) => Object.prototype.hasOwnProperty.call(changes, key));
   if (shouldRebuild) {
     rebuildContextMenus();
   }

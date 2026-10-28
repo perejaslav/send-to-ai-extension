@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Send to AI",
-  "version": "4.6",
-  "version_name": "4.6",
+  "version": "4.6.1",
+  "version_name": "4.6.1",
   "description": "Отправить выделенный текст в AI-ассистенты (Qwen, Minimax, Grok, Z.ai, DeepSeek, Claude, Kimi, ChatGPT, Gemini, Google AI Studio)",
   "permissions": [
     "contextMenus",

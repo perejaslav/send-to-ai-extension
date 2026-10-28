@@ -1,5 +1,6 @@
 import { SPECIAL_ACTIONS, SERVICE_CONFIGS } from "./services.js";
-import { SETTINGS_STORAGE_KEYS, normalizeSettings } from "./settings.js";
+import { normalizeSettings } from "./settings.js";
+import { loadSettingsFromStorage } from "./settings-storage.js";
 
 const subtitleElement = document.getElementById("subtitle");
 const selectionPreviewElement = document.getElementById("selectionPreview");
@@ -93,18 +94,7 @@ function renderSpecialActions() {
 }
 
 async function loadSettings() {
-  const storedSettings = await new Promise((resolve, reject) => {
-    chrome.storage.sync.get(SETTINGS_STORAGE_KEYS, (result) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve(result);
-    });
-  });
-
-  state.settings = normalizeSettings(storedSettings);
+  state.settings = await loadSettingsFromStorage();
 }
 
 async function readActiveTabSelection() {
