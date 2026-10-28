@@ -573,6 +573,40 @@ export function getYouTubeTemplateById(rawTemplates, templateId) {
   return templates.find((template) => template.id === templateId) || templates[0];
 }
 
+// Compares only the fields a default can restore; "enabled" is the user's
+// visibility choice and does not make a template "edited".
+export function isDefaultYouTubeTemplate(template) {
+  const defaultTemplate = DEFAULT_YOUTUBE_TEMPLATES_BY_ID[template?.id];
+  if (!defaultTemplate) {
+    return false;
+  }
+
+  return String(template.title || "").trim() === defaultTemplate.title
+    && String(template.template || "").trim() === defaultTemplate.template.trim()
+    && template.serviceId === defaultTemplate.serviceId;
+}
+
+export function restoreDefaultYouTubeTemplate(rawTemplates, templateId) {
+  const templates = normalizeYouTubeTemplates(rawTemplates);
+  const defaultTemplate = DEFAULT_YOUTUBE_TEMPLATES_BY_ID[templateId];
+  if (!defaultTemplate) {
+    return templates;
+  }
+
+  return templates.map((template) => {
+    if (template.id !== templateId) {
+      return template;
+    }
+
+    return {
+      ...template,
+      title: defaultTemplate.title,
+      serviceId: defaultTemplate.serviceId,
+      template: defaultTemplate.template
+    };
+  });
+}
+
 export function renderYouTubeTemplate(template, context = {}) {
   const youtubeUrl = context.youtubeUrl || context.url || "";
   return String(template?.template || "").replace(/\{youtubeUrl\}|\{url\}/g, youtubeUrl).trim();

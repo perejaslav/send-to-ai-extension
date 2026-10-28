@@ -161,6 +161,8 @@ For commands with the **Page text** context, the extension extracts the visible 
 4. Optionally disable the template so it does not appear in the menu
 5. Click **Save**
 
+A template that differs from the built-in one is marked **«изменён»** (edited) in its header. The **«Вернуть шаблон по умолчанию»** (restore default) button inside the template brings back the built-in title, service, and text and saves them right away. Other templates and settings stay unchanged.
+
 ### Command Profiles
 
 1. Open the extension settings
