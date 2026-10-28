@@ -20,7 +20,8 @@ const excludedDirectories = new Set([
 
 const excludedFiles = new Set([
   ".DS_Store",
-  "TECHNICAL_SPEC.md"
+  "TECHNICAL_SPEC.md",
+  "HANDOFF.md"
 ]);
 
 const allowedExtensions = new Set([

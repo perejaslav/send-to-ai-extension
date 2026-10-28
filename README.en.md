@@ -2,7 +2,7 @@
 
 A browser extension for Chrome, Edge, and Yandex Browser that adds context menu commands to quickly send selected text to popular AI assistants.
 
-Current version: **4.5.1**. In Yandex Browser the extension's service worker runs from a single bundled file, `background.bundle.js` (Yandex does not support ES-module service workers).
+Current version: **4.6**. In Yandex Browser the extension's service worker runs from a single bundled file, `background.bundle.js` (Yandex does not support ES-module service workers).
 
 ## Features
 
@@ -114,7 +114,7 @@ Available service commands:
 ### YouTube Integration
 
 1. Right-click a YouTube link (`youtube.com` or `youtu.be`) on any webpage
-2. Pick a YouTube template: transcript article, short summary, fact list, Telegram post, or research points
+2. Pick a YouTube template: transcript article, detailed summary, fact list, Telegram post, or research points
 3. The extension opens the configured service and inserts a prepared prompt with a normalized YouTube URL
 
 Templates are editable on the options page: prompt text, title, target service, and menu visibility. The `{youtubeUrl}` variable is replaced with the normalized link.
