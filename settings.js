@@ -14,8 +14,7 @@ export const SETTINGS_STORAGE_KEYS = [
   "showContextActionsGrok",
   "enabledContextActionsGrok",
   "customCommands",
-  "activeProfileIds",
-  "youtubeTemplates"
+  "activeProfileIds"
 ];
 
 const SPECIAL_ACTION_IDS = SPECIAL_ACTIONS.map((action) => action.id);

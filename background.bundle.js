@@ -2460,8 +2460,7 @@ const SETTINGS_STORAGE_KEYS = [
   "showContextActionsGrok",
   "enabledContextActionsGrok",
   "customCommands",
-  "activeProfileIds",
-  "youtubeTemplates"
+  "activeProfileIds"
 ];
 
 const SPECIAL_ACTION_IDS = SPECIAL_ACTIONS.map((action) => action.id);
@@ -2586,6 +2585,172 @@ function normalizeSettings(rawSettings, allServiceIds = ALL_SERVICE_IDS) {
     activeProfileIds: normalizeActiveProfileIds(source.activeProfileIds),
     youtubeTemplates: normalizeYouTubeTemplates(source.youtubeTemplates)
   };
+}
+
+// === settings-storage.js ===
+// chrome.storage.sync allows only 8192 bytes per item. YouTube templates take
+// about 40 KB, so they (and custom commands) live in chrome.storage.local.
+const LOCAL_SETTINGS_KEYS = ["customCommands", "youtubeTemplates"];
+
+const SYNC_SETTINGS_KEYS = SETTINGS_STORAGE_KEYS.filter(
+  (key) => !LOCAL_SETTINGS_KEYS.includes(key)
+);
+
+function getAreas(areas) {
+  if (areas) {
+    return areas;
+  }
+
+  return { sync: chrome.storage.sync, local: chrome.storage.local };
+}
+
+function getLastErrorMessage() {
+  return globalThis.chrome?.runtime?.lastError?.message || null;
+}
+
+function readArea(area, keys) {
+  return new Promise((resolve, reject) => {
+    area.get(keys, (result) => {
+      const errorMessage = getLastErrorMessage();
+      if (errorMessage) {
+        reject(new Error(errorMessage));
+        return;
+      }
+
+      resolve(result || {});
+    });
+  });
+}
+
+function writeArea(area, values) {
+  return new Promise((resolve, reject) => {
+    area.set(values, () => {
+      const errorMessage = getLastErrorMessage();
+      if (errorMessage) {
+        reject(new Error(errorMessage));
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+function removeArea(area, keys) {
+  return new Promise((resolve, reject) => {
+    area.remove(keys, () => {
+      const errorMessage = getLastErrorMessage();
+      if (errorMessage) {
+        reject(new Error(errorMessage));
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+function pickKeys(source, keys) {
+  const result = {};
+
+  for (const key of keys) {
+    result[key] = source[key];
+  }
+
+  return result;
+}
+
+// Splits settings into the parts stored in each area. Only keys that are
+// present in the input are returned, so a page that does not manage some
+// setting cannot overwrite it.
+function splitSettingsForStorage(settings) {
+  const syncPayload = {};
+  const localPayload = {};
+
+  for (const key of SYNC_SETTINGS_KEYS) {
+    if (key in settings) {
+      syncPayload[key] = settings[key];
+    }
+  }
+
+  for (const key of LOCAL_SETTINGS_KEYS) {
+    if (key in settings) {
+      localPayload[key] = settings[key];
+    }
+  }
+
+  return { syncPayload, localPayload };
+}
+
+// One-time move of settings that used to live in chrome.storage.sync. Local
+// values win; a second call finds nothing to move and changes nothing.
+async function migrateSettingsToLocal(areas) {
+  const { sync, local } = getAreas(areas);
+  const [syncValues, localValues] = await Promise.all([
+    readArea(sync, LOCAL_SETTINGS_KEYS),
+    readArea(local, LOCAL_SETTINGS_KEYS)
+  ]);
+
+  const valuesToMove = {};
+  const legacySyncKeys = [];
+
+  for (const key of LOCAL_SETTINGS_KEYS) {
+    const hasLocalValue = localValues[key] !== undefined;
+    const hasSyncValue = syncValues[key] !== undefined;
+
+    if (!hasSyncValue) {
+      continue;
+    }
+
+    legacySyncKeys.push(key);
+
+    if (!hasLocalValue) {
+      valuesToMove[key] = syncValues[key];
+    }
+  }
+
+  if (Object.keys(valuesToMove).length > 0) {
+    await writeArea(local, valuesToMove);
+  }
+
+  if (legacySyncKeys.length > 0) {
+    await removeArea(sync, legacySyncKeys);
+  }
+}
+
+async function loadSettingsFromStorage(areas) {
+  const { sync, local } = getAreas(areas);
+
+  try {
+    await migrateSettingsToLocal({ sync, local });
+  } catch (error) {
+    console.warn("settings migration to local failed:", error.message);
+  }
+
+  const [syncValues, localValues] = await Promise.all([
+    readArea(sync, SYNC_SETTINGS_KEYS),
+    readArea(local, LOCAL_SETTINGS_KEYS)
+  ]);
+
+  return normalizeSettings({ ...syncValues, ...localValues });
+}
+
+async function saveSettingsToStorage(settings, areas) {
+  const { sync, local } = getAreas(areas);
+  const normalized = normalizeSettings(settings);
+  const { syncPayload, localPayload } = splitSettingsForStorage(settings);
+
+  const writes = [];
+
+  if (Object.keys(syncPayload).length > 0) {
+    writes.push(writeArea(sync, pickKeys(normalized, Object.keys(syncPayload))));
+  }
+
+  if (Object.keys(localPayload).length > 0) {
+    writes.push(writeArea(local, pickKeys(normalized, Object.keys(localPayload))));
+  }
+
+  await Promise.all(writes);
 }
 
 // === youtube.js ===
@@ -2771,19 +2936,6 @@ const ACTION_DEFAULT_TITLE = "Send to AI";
 const STATUS_CLEAR_DELAY_MS = 5000;
 const PAGE_TEXT_MAX_LENGTH = 30000;
 
-function storageGet(keys) {
-  return new Promise((resolve, reject) => {
-    chrome.storage.sync.get(keys, (result) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve(result);
-    });
-  });
-}
-
 function queryTabs(queryInfo) {
   return new Promise((resolve, reject) => {
     chrome.tabs.query(queryInfo, (tabs) => {
@@ -2889,12 +3041,50 @@ function executePageExtraction(tabId) {
   });
 }
 
+function storageGetLocal(keys) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(keys, (result) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve(result);
+    });
+  });
+}
+
+function storageSetLocal(values) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set(values, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+function storageRemoveSync(keys) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.sync.remove(keys, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
 async function loadSettings() {
   try {
-    const storedSettings = await storageGet(SETTINGS_STORAGE_KEYS);
-    return normalizeSettings(storedSettings);
+    return await loadSettingsFromStorage();
   } catch (error) {
-    console.warn("storage.sync.get error:", error.message);
+    console.warn("settings storage read error:", error.message);
     return DEFAULT_SETTINGS;
   }
 }
@@ -3318,11 +3508,11 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "sync") {
-    return;
-  }
+  // Sync settings drive context menus; local settings (templates, custom
+  // commands) also end up in menu labels, so both areas are watched.
+  const watchedKeys = areaName === "local" ? LOCAL_SETTINGS_KEYS : SYNC_SETTINGS_KEYS;
+  const shouldRebuild = watchedKeys.some((key) => Object.prototype.hasOwnProperty.call(changes, key));
 
-  const shouldRebuild = SETTINGS_STORAGE_KEYS.some((key) => Object.prototype.hasOwnProperty.call(changes, key));
   if (shouldRebuild) {
     rebuildContextMenus();
   }
