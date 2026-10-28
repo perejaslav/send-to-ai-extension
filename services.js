@@ -15,7 +15,7 @@ export const QUICK_DEFAULT_MENU_ID = "sendToAIDefault";
 export const ROOT_MENU_TITLE = "Отправить в AI";
 export const YOUTUBE_MENU_TITLES = {
   article: "Статья по YouTube-транскрипции в Gemini",
-  summary: "Краткое резюме YouTube-видео в Gemini",
+  summary: "Подробное резюме YouTube-видео в Gemini",
   facts: "Список фактов из YouTube-видео в Gemini",
   telegram: "Telegram-пост по YouTube-видео в Gemini",
   research: "Тезисы для исследования по YouTube-видео в Gemini"
