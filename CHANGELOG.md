@@ -4,6 +4,13 @@
 
 Формат основан на идее Keep a Changelog, но адаптирован под практическое ведение небольшого браузерного расширения.
 
+## Unreleased
+
+### Changed
+
+- Из `background.js` удалены неиспользуемые хелперы `storageGetLocal`, `storageSetLocal`, `storageRemoveSync`, оставшиеся после перехода на `settings-storage.js`.
+- В `.gitignore` добавлена папка `.playwright-cli/`.
+
 ## v4.6.1
 
 ### Fixed

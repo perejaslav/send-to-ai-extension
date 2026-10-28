@@ -131,45 +131,6 @@ function executePageExtraction(tabId) {
   });
 }
 
-function storageGetLocal(keys) {
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.get(keys, (result) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve(result);
-    });
-  });
-}
-
-function storageSetLocal(values) {
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.set(values, () => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve();
-    });
-  });
-}
-
-function storageRemoveSync(keys) {
-  return new Promise((resolve, reject) => {
-    chrome.storage.sync.remove(keys, () => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve();
-    });
-  });
-}
-
 async function loadSettings() {
   try {
     return await loadSettingsFromStorage();
