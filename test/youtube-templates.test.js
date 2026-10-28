@@ -5,8 +5,10 @@ import {
   DEFAULT_YOUTUBE_TEMPLATES,
   YOUTUBE_TEMPLATE_IDS,
   getYouTubeTemplateById,
+  isDefaultYouTubeTemplate,
   normalizeYouTubeTemplates,
-  renderYouTubeTemplate
+  renderYouTubeTemplate,
+  restoreDefaultYouTubeTemplate
 } from "../youtube-templates.js";
 
 test("normalizeYouTubeTemplates returns all default templates when input is missing", () => {
@@ -62,4 +64,41 @@ test("renderYouTubeTemplate replaces youtube url variables", () => {
   );
 
   assert.equal(result, "URL: https://www.youtube.com/watch?v=123\nAgain: https://www.youtube.com/watch?v=123");
+});
+
+test("isDefaultYouTubeTemplate detects edits but ignores the enabled flag", () => {
+  const [article] = normalizeYouTubeTemplates();
+
+  assert.equal(isDefaultYouTubeTemplate(article), true);
+  assert.equal(isDefaultYouTubeTemplate({ ...article, enabled: false }), true);
+  assert.equal(isDefaultYouTubeTemplate({ ...article, template: "Old prompt {youtubeUrl}" }), false);
+  assert.equal(isDefaultYouTubeTemplate({ ...article, title: "My article" }), false);
+  assert.equal(isDefaultYouTubeTemplate({ ...article, serviceId: "sendToChatGPT" }), false);
+  assert.equal(isDefaultYouTubeTemplate({ id: "unknown", title: "x", template: "y" }), false);
+});
+
+test("restoreDefaultYouTubeTemplate restores one template and keeps the rest", () => {
+  const edited = normalizeYouTubeTemplates([
+    { id: "summary", title: "My summary", enabled: false, serviceId: "sendToChatGPT", template: "Old {youtubeUrl}" },
+    { id: "facts", title: "My facts", template: "Facts {youtubeUrl}" }
+  ]);
+
+  const restored = restoreDefaultYouTubeTemplate(edited, "summary");
+  const summary = restored.find((template) => template.id === "summary");
+  const facts = restored.find((template) => template.id === "facts");
+  const defaultSummary = DEFAULT_YOUTUBE_TEMPLATES.find((template) => template.id === "summary");
+
+  assert.equal(summary.title, defaultSummary.title);
+  assert.equal(summary.serviceId, defaultSummary.serviceId);
+  assert.equal(summary.template, defaultSummary.template);
+  assert.equal(summary.enabled, false);
+  assert.equal(isDefaultYouTubeTemplate(summary), true);
+  assert.equal(facts.title, "My facts");
+  assert.equal(facts.template, "Facts {youtubeUrl}");
+});
+
+test("restoreDefaultYouTubeTemplate ignores unknown template ids", () => {
+  const templates = normalizeYouTubeTemplates([{ id: "facts", title: "My facts" }]);
+
+  assert.deepEqual(restoreDefaultYouTubeTemplate(templates, "missing"), templates);
 });

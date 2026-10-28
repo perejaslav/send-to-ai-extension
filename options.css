@@ -481,6 +481,7 @@ select {
 }
 
 .command-actions,
+.youtube-template-actions,
 .import-export-actions,
 .diagnostics-actions {
   display: flex;
@@ -489,7 +490,8 @@ select {
   margin-top: 12px;
 }
 
-.command-actions {
+.command-actions,
+.youtube-template-actions {
   justify-content: flex-end;
 }
 

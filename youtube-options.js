@@ -1,6 +1,11 @@
 import { SERVICE_CONFIGS } from "./services.js";
 import { loadSettingsFromStorage, saveSettingsToStorage } from "./settings-storage.js";
-import { normalizeYouTubeTemplates, renderYouTubeTemplate } from "./youtube-templates.js";
+import {
+  isDefaultYouTubeTemplate,
+  normalizeYouTubeTemplates,
+  renderYouTubeTemplate,
+  restoreDefaultYouTubeTemplate
+} from "./youtube-templates.js";
 
 const youtubeTemplatesListElement = document.getElementById("youtubeTemplatesList");
 const saveButtonElement = document.getElementById("saveButton");
@@ -26,6 +31,20 @@ function getServiceTitle(serviceId) {
   return SERVICE_CONFIGS.find((service) => service.id === serviceId)?.title || serviceId;
 }
 
+function getTemplateSummaryText(template) {
+  const parts = [template.title || "Без названия", getServiceTitle(template.serviceId)];
+
+  if (template.enabled === false) {
+    parts.push("выключен");
+  }
+
+  if (!isDefaultYouTubeTemplate(template)) {
+    parts.push("изменён");
+  }
+
+  return parts.join(" · ");
+}
+
 async function saveYouTubeTemplates(showMessage = true) {
   state.youtubeTemplates = normalizeYouTubeTemplates(state.youtubeTemplates);
   await saveSettingsToStorage({ youtubeTemplates: state.youtubeTemplates });
@@ -43,6 +62,28 @@ function updateTemplate(templateId, patch) {
 
   Object.assign(template, patch);
   renderYouTubeTemplates();
+}
+
+async function restoreDefaultTemplate(templateId) {
+  const template = state.youtubeTemplates.find((item) => item.id === templateId);
+  if (!template) {
+    return;
+  }
+
+  const confirmed = window.confirm(`Вернуть шаблон «${template.title || "Без названия"}» к встроенному тексту? Ваши правки этого шаблона пропадут.`);
+  if (!confirmed) {
+    return;
+  }
+
+  state.youtubeTemplates = restoreDefaultYouTubeTemplate(state.youtubeTemplates, templateId);
+  renderYouTubeTemplates();
+
+  try {
+    await saveYouTubeTemplates(false);
+    setStatus("Шаблон возвращён к встроенному тексту и сохранён", false);
+  } catch (error) {
+    setStatus(`Ошибка сохранения YouTube-шаблонов: ${error.message}`, true);
+  }
 }
 
 function renderServiceSelect(template) {
@@ -69,15 +110,25 @@ function renderYouTubeTemplates() {
     return;
   }
 
+  // Re-rendering must not collapse the template the user is working on.
+  const openTemplateIds = new Set(
+    Array.from(youtubeTemplatesListElement.querySelectorAll("details[open]"), (item) => item.dataset.templateId)
+  );
+
   youtubeTemplatesListElement.textContent = "";
 
   for (const template of state.youtubeTemplates) {
     const item = document.createElement("details");
     item.className = "youtube-template-item";
-    item.open = false;
+    item.dataset.templateId = template.id;
+    item.open = openTemplateIds.has(template.id);
 
     const summary = document.createElement("summary");
-    summary.textContent = `${template.title} · ${getServiceTitle(template.serviceId)}${template.enabled === false ? " · выключен" : ""}`;
+    const restoreButton = document.createElement("button");
+    const refreshEditedState = () => {
+      summary.textContent = getTemplateSummaryText(template);
+      restoreButton.disabled = isDefaultYouTubeTemplate(template);
+    };
 
     const body = document.createElement("div");
     body.className = "youtube-template-body";
@@ -102,7 +153,7 @@ function renderYouTubeTemplates() {
     titleInput.value = template.title;
     titleInput.addEventListener("input", () => {
       template.title = titleInput.value;
-      summary.textContent = `${template.title || "Без названия"} · ${getServiceTitle(template.serviceId)}${template.enabled === false ? " · выключен" : ""}`;
+      refreshEditedState();
     });
     titleLabel.append(titleInput);
 
@@ -119,6 +170,7 @@ function renderYouTubeTemplates() {
     textarea.value = template.template;
     textarea.addEventListener("input", () => {
       template.template = textarea.value;
+      refreshEditedState();
       preview.textContent = renderYouTubeTemplate(template, { youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" });
     });
     templateLabel.append(textarea);
@@ -132,7 +184,19 @@ function renderYouTubeTemplates() {
     const preview = document.createElement("pre");
     preview.textContent = renderYouTubeTemplate(template, { youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" });
 
-    body.append(enabledLabel, titleLabel, serviceLabel, templateLabel, help, previewTitle, preview);
+    const actions = document.createElement("div");
+    actions.className = "youtube-template-actions";
+    restoreButton.type = "button";
+    restoreButton.className = "secondary";
+    restoreButton.textContent = "Вернуть шаблон по умолчанию";
+    restoreButton.title = "Вернуть встроенные название, сервис и текст этого шаблона";
+    restoreButton.addEventListener("click", () => {
+      restoreDefaultTemplate(template.id);
+    });
+    actions.append(restoreButton);
+    refreshEditedState();
+
+    body.append(enabledLabel, titleLabel, serviceLabel, templateLabel, help, previewTitle, preview, actions);
     item.append(summary, body);
     youtubeTemplatesListElement.append(item);
   }
