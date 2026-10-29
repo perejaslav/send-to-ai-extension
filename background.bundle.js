@@ -1085,6 +1085,7 @@ const YOUTUBE_MENU_IDS = {
 const CONTEXT_ACTIONS_MENU_ID = "pageAndLinkActions";
 const CONTEXT_ACTIONS_QWEN_MENU_ID = "pageAndLinkActionsQwen";
 const CONTEXT_ACTIONS_GROK_MENU_ID = "pageAndLinkActionsGrok";
+const CONTEXT_ACTIONS_DEEPSEEK_MENU_ID = "pageAndLinkActionsDeepSeek";
 const QUICK_DEFAULT_MENU_ID = "sendToAIDefault";
 
 const ROOT_MENU_TITLE = "Отправить в AI";
@@ -1098,6 +1099,7 @@ const YOUTUBE_MENU_TITLES = {
 const CONTEXT_ACTIONS_MENU_TITLE = "Страницы и ссылки";
 const CONTEXT_ACTIONS_QWEN_MENU_TITLE = "Страницы и ссылки в Qwen";
 const CONTEXT_ACTIONS_GROK_MENU_TITLE = "Страницы и ссылки в Grok";
+const CONTEXT_ACTIONS_DEEPSEEK_MENU_TITLE = "Страницы и ссылки в DeepSeek";
 
 const SERVICE_CONFIGS = [
   {
@@ -1647,12 +1649,73 @@ const CONTEXT_ACTIONS_GROK = [
   }
 ];
 
+const CONTEXT_ACTIONS_DEEPSEEK = [
+  {
+    id: "pageSummaryInDeepSeek",
+    title: "Саммари страницы в DeepSeek",
+    contextType: "page",
+    actionType: "summary",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "pageFactCheckInDeepSeek",
+    title: "Фактчекинг страницы в DeepSeek",
+    contextType: "page",
+    actionType: "factcheck",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "pageTranslateInDeepSeek",
+    title: "Перевести страницу в DeepSeek",
+    contextType: "page",
+    actionType: "translate",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "pageKeyPointsInDeepSeek",
+    title: "Тезисы страницы в DeepSeek",
+    contextType: "page",
+    actionType: "key_points",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "linkSummaryInDeepSeek",
+    title: "Саммари ссылки в DeepSeek",
+    contextType: "link",
+    actionType: "summary",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "linkFactCheckInDeepSeek",
+    title: "Фактчекинг ссылки в DeepSeek",
+    contextType: "link",
+    actionType: "factcheck",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "linkTranslateInDeepSeek",
+    title: "Перевести ссылку в DeepSeek",
+    contextType: "link",
+    actionType: "translate",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "linkKeyPointsInDeepSeek",
+    title: "Тезисы ссылки в DeepSeek",
+    contextType: "link",
+    actionType: "key_points",
+    serviceId: "sendToDeepSeek"
+  }
+];
+
 const CONTEXT_ACTIONS_BY_ID = Object.fromEntries(CONTEXT_ACTIONS.map((action) => [action.id, action]));
 const CONTEXT_ACTIONS_QWEN_BY_ID = Object.fromEntries(CONTEXT_ACTIONS_QWEN.map((action) => [action.id, action]));
 const CONTEXT_ACTIONS_GROK_BY_ID = Object.fromEntries(CONTEXT_ACTIONS_GROK.map((action) => [action.id, action]));
+const CONTEXT_ACTIONS_DEEPSEEK_BY_ID = Object.fromEntries(CONTEXT_ACTIONS_DEEPSEEK.map((action) => [action.id, action]));
 const ALL_SERVICE_IDS = SERVICE_CONFIGS.map((service) => service.id);
 const ALL_CONTEXT_ACTION_QWEN_IDS = CONTEXT_ACTIONS_QWEN.map((action) => action.id);
 const ALL_CONTEXT_ACTION_GROK_IDS = CONTEXT_ACTIONS_GROK.map((action) => action.id);
+const ALL_CONTEXT_ACTION_DEEPSEEK_IDS = CONTEXT_ACTIONS_DEEPSEEK.map((action) => action.id);
 
 // === youtube-templates.js ===
 const YOUTUBE_TEMPLATE_IDS = {
@@ -2472,6 +2535,30 @@ function buildMenuDescriptors(settings) {
     }
   }
 
+  if (settings.showContextActionsDeepSeek) {
+    const enabledContextActionsDeepSeek = settings.enabledContextActionsDeepSeek || {};
+    const visibleContextDeepSeek = CONTEXT_ACTIONS_DEEPSEEK.filter((action) =>
+      isServiceEnabled(settings, action.serviceId) && enabledContextActionsDeepSeek[action.id] !== false
+    );
+
+    if (visibleContextDeepSeek.length > 0) {
+      descriptors.push({
+        id: CONTEXT_ACTIONS_DEEPSEEK_MENU_ID,
+        title: CONTEXT_ACTIONS_DEEPSEEK_MENU_TITLE,
+        contexts: ["page", "link"]
+      });
+
+      for (const action of visibleContextDeepSeek) {
+        descriptors.push({
+          id: action.id,
+          parentId: CONTEXT_ACTIONS_DEEPSEEK_MENU_ID,
+          title: action.title,
+          contexts: [action.contextType]
+        });
+      }
+    }
+  }
+
   descriptors.push(...buildCustomCommandDescriptors(settings));
   descriptors.push(...buildYouTubeTemplateDescriptors(settings));
 
@@ -2493,6 +2580,8 @@ const SETTINGS_STORAGE_KEYS = [
   "enabledContextActionsQwen",
   "showContextActionsGrok",
   "enabledContextActionsGrok",
+  "showContextActionsDeepSeek",
+  "enabledContextActionsDeepSeek",
   "customCommands",
   "activeProfileIds"
 ];
@@ -2511,6 +2600,10 @@ function buildDefaultContextActionsGrok() {
   return Object.fromEntries(ALL_CONTEXT_ACTION_GROK_IDS.map((actionId) => [actionId, true]));
 }
 
+function buildDefaultContextActionsDeepSeek() {
+  return Object.fromEntries(ALL_CONTEXT_ACTION_DEEPSEEK_IDS.map((actionId) => [actionId, true]));
+}
+
 function buildDefaultSettings(allServiceIds = ALL_SERVICE_IDS) {
   const enabledServices = Object.fromEntries(allServiceIds.map((serviceId) => [serviceId, true]));
 
@@ -2524,6 +2617,8 @@ function buildDefaultSettings(allServiceIds = ALL_SERVICE_IDS) {
     enabledContextActionsQwen: buildDefaultContextActionsQwen(),
     showContextActionsGrok: true,
     enabledContextActionsGrok: buildDefaultContextActionsGrok(),
+    showContextActionsDeepSeek: true,
+    enabledContextActionsDeepSeek: buildDefaultContextActionsDeepSeek(),
     customCommands: [],
     activeProfileIds: [ALL_PROFILES_ID],
     youtubeTemplates: normalizeYouTubeTemplates()
@@ -2605,6 +2700,17 @@ function normalizeSettings(rawSettings, allServiceIds = ALL_SERVICE_IDS) {
       : true;
   }
 
+  const enabledContextDeepSeekFromStorage = source.enabledContextActionsDeepSeek && typeof source.enabledContextActionsDeepSeek === "object"
+    ? source.enabledContextActionsDeepSeek
+    : {};
+
+  const normalizedContextActionsDeepSeek = {};
+  for (const actionId of ALL_CONTEXT_ACTION_DEEPSEEK_IDS) {
+    normalizedContextActionsDeepSeek[actionId] = typeof enabledContextDeepSeekFromStorage[actionId] === "boolean"
+      ? enabledContextDeepSeekFromStorage[actionId]
+      : true;
+  }
+
   return {
     serviceOrder: normalizedOrder,
     enabledServices: normalizedEnabled,
@@ -2615,6 +2721,8 @@ function normalizeSettings(rawSettings, allServiceIds = ALL_SERVICE_IDS) {
     enabledContextActionsQwen: normalizedContextActionsQwen,
     showContextActionsGrok: source.showContextActionsGrok !== false,
     enabledContextActionsGrok: normalizedContextActionsGrok,
+    showContextActionsDeepSeek: source.showContextActionsDeepSeek !== false,
+    enabledContextActionsDeepSeek: normalizedContextActionsDeepSeek,
     customCommands: normalizeCustomCommands(source.customCommands, allServiceIds),
     activeProfileIds: normalizeActiveProfileIds(source.activeProfileIds),
     youtubeTemplates: normalizeYouTubeTemplates(source.youtubeTemplates)
@@ -3521,7 +3629,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
 
-  const contextAction = CONTEXT_ACTIONS_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_QWEN_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_GROK_BY_ID[info.menuItemId];
+  const contextAction = CONTEXT_ACTIONS_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_QWEN_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_GROK_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_DEEPSEEK_BY_ID[info.menuItemId];
   if (contextAction) {
     await handleContextAction(contextAction, info, tab);
     return;

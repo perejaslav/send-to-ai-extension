@@ -17,7 +17,7 @@ import {
 } from "./profiles.js";
 import { DEFAULT_SETTINGS, normalizeSettings } from "./settings.js";
 import { loadSettingsFromStorage, saveSettingsToStorage } from "./settings-storage.js";
-import { CONTEXT_ACTIONS_QWEN, CONTEXT_ACTIONS_GROK, SERVICE_CONFIGS, SPECIAL_ACTIONS, getCompactSpecialActionTitle } from "./services.js";
+import { CONTEXT_ACTIONS_QWEN, CONTEXT_ACTIONS_GROK, CONTEXT_ACTIONS_DEEPSEEK, SERVICE_CONFIGS, SPECIAL_ACTIONS, getCompactSpecialActionTitle } from "./services.js";
 
 const EXPORT_SCHEMA_VERSION = 1;
 const PINNED_SERVICE_IDS = ["sendToChatGPT", "sendToQwen", "sendToGrok"];
@@ -27,12 +27,14 @@ const servicesListElement = document.getElementById("servicesList");
 const specialActionsListElement = document.getElementById("specialActionsList");
 const contextActionsQwenListElement = document.getElementById("contextActionsQwenList");
 const contextActionsGrokListElement = document.getElementById("contextActionsGrokList");
+const contextActionsDeepSeekListElement = document.getElementById("contextActionsDeepSeekList");
 const saveButtonElement = document.getElementById("saveButton");
 const resetButtonElement = document.getElementById("resetButton");
 const statusElement = document.getElementById("status");
 const showSpecialActionsElement = document.getElementById("showSpecialActions");
 const showContextActionsQwenElement = document.getElementById("showContextActionsQwen");
 const showContextActionsGrokElement = document.getElementById("showContextActionsGrok");
+const showContextActionsDeepSeekElement = document.getElementById("showContextActionsDeepSeek");
 const activeProfilesListElement = document.getElementById("activeProfilesList");
 
 const addCustomCommandButtonElement = document.getElementById("addCustomCommandButton");
@@ -76,6 +78,8 @@ const state = {
     enabledContextActionsQwen: {},
     showContextActionsGrok: true,
     enabledContextActionsGrok: {},
+    showContextActionsDeepSeek: true,
+    enabledContextActionsDeepSeek: {},
     customCommands: [],
     activeProfileIds: [ALL_PROFILES_ID]
   }
@@ -470,6 +474,33 @@ function renderContextActionsGrokList() {
   }
 }
 
+function renderContextActionsDeepSeekList() {
+  contextActionsDeepSeekListElement.textContent = "";
+
+  for (const action of CONTEXT_ACTIONS_DEEPSEEK) {
+    const row = document.createElement("label");
+    row.className = "special-action-row";
+    if (!state.settings.showContextActionsDeepSeek) {
+      row.classList.add("is-disabled");
+    }
+
+    const title = document.createElement("span");
+    title.className = "special-action-title";
+    title.textContent = action.title;
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = state.settings.enabledContextActionsDeepSeek[action.id] !== false;
+    checkbox.disabled = !state.settings.showContextActionsDeepSeek;
+    checkbox.addEventListener("change", () => {
+      state.settings.enabledContextActionsDeepSeek[action.id] = checkbox.checked;
+    });
+
+    row.append(title, checkbox);
+    contextActionsDeepSeekListElement.append(row);
+  }
+}
+
 function getCommandProfileText(command) {
   const profileIds = normalizeCommandProfileIds(command.profileIds);
   if (profileIds.length === 0) {
@@ -837,11 +868,13 @@ function render() {
   renderSpecialActionsList();
   renderContextActionsQwenList();
   renderContextActionsGrokList();
+  renderContextActionsDeepSeekList();
   renderCustomCommandsList();
   renderCustomCommandForm();
   showSpecialActionsElement.checked = state.settings.showSpecialActions !== false;
   showContextActionsQwenElement.checked = state.settings.showContextActionsQwen !== false;
   showContextActionsGrokElement.checked = state.settings.showContextActionsGrok !== false;
+  showContextActionsDeepSeekElement.checked = state.settings.showContextActionsDeepSeek !== false;
   renderDiagnosticsLog().catch((error) => setStatus(`Ошибка диагностики: ${error.message}`, true));
 }
 
@@ -901,6 +934,11 @@ showContextActionsQwenElement.addEventListener("change", () => {
 showContextActionsGrokElement.addEventListener("change", () => {
   state.settings.showContextActionsGrok = showContextActionsGrokElement.checked;
   renderContextActionsGrokList();
+});
+
+showContextActionsDeepSeekElement.addEventListener("change", () => {
+  state.settings.showContextActionsDeepSeek = showContextActionsDeepSeekElement.checked;
+  renderContextActionsDeepSeekList();
 });
 
 addCustomCommandButtonElement.addEventListener("click", addCustomCommand);

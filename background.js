@@ -14,6 +14,7 @@ import {
   CONTEXT_ACTIONS_BY_ID,
   CONTEXT_ACTIONS_QWEN_BY_ID,
   CONTEXT_ACTIONS_GROK_BY_ID,
+  CONTEXT_ACTIONS_DEEPSEEK_BY_ID,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS_BY_ID,
   YOUTUBE_MENU_ID_PREFIX,
@@ -577,7 +578,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
 
-  const contextAction = CONTEXT_ACTIONS_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_QWEN_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_GROK_BY_ID[info.menuItemId];
+  const contextAction = CONTEXT_ACTIONS_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_QWEN_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_GROK_BY_ID[info.menuItemId] || CONTEXT_ACTIONS_DEEPSEEK_BY_ID[info.menuItemId];
   if (contextAction) {
     await handleContextAction(contextAction, info, tab);
     return;
