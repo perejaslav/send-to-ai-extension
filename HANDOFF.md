@@ -40,7 +40,7 @@
 
 - Добавлен блок «Страницы и ссылки в DeepSeek» (копия Grok-блока): `CONTEXT_ACTIONS_DEEPSEEK` в `services.js`,
   настройки `showContextActionsDeepSeek` / `enabledContextActionsDeepSeek`, секция на странице настроек.
-- Не проверено вручную: вставка длинного текста страницы в DeepSeek.
+- Вставка в DeepSeek проверена вручную в браузере — работает.
 
 ## Что важно знать
 
