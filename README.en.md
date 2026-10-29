@@ -2,7 +2,7 @@
 
 A browser extension for Chrome, Edge, and Yandex Browser that adds context menu commands to quickly send selected text to popular AI assistants.
 
-Current version: **4.7**. In Yandex Browser the extension's service worker runs from a single bundled file, `background.bundle.js` (Yandex does not support ES-module service workers).
+Current version: **4.8**. In Yandex Browser the extension's service worker runs from a single bundled file, `background.bundle.js` (Yandex does not support ES-module service workers).
 
 ## Features
 
@@ -11,7 +11,7 @@ Current version: **4.7**. In Yandex Browser the extension's service worker runs 
 - Auto-insert selected text into the chat input with fallback strategies
 - **ChatGPT**, **Qwen AI**, and **Grok** are pinned at the top of the menu with nested command submenus
 - Other services can be enabled, disabled, and reordered
-- Unified page/link command blocks in ChatGPT, Qwen, and Grok: summary, fact-checking, translation, and key points
+- Unified page/link command blocks in ChatGPT, Qwen, Grok, and DeepSeek: summary, fact-checking, translation, and key points
 - Five editable YouTube templates: article, summary, fact list, Telegram post, and research points — with service selection and the `{youtubeUrl}` variable
 - Custom user commands with their own prompt templates
 - Command profiles: base, marketing, editing, translation, research, YouTube, and Hermes Agent
@@ -32,7 +32,7 @@ Current version: **4.7**. In Yandex Browser the extension's service worker runs 
 | **Google Gemini** | Send text |
 | **Google AI Studio** | Send text |
 | **Claude** | Send text |
-| **DeepSeek** | Send text |
+| **DeepSeek** | Send text; summary, fact-checking, translation, and key points for pages and links |
 | **Z.ai** | Send text |
 | **Kimi AI** | Send text |
 | **Minimax** | Send text |
@@ -53,6 +53,8 @@ Send to AI
 |- Qwen AI
 |  |- Send selection
 |  |- Translate to Russian
+|  |- Make summary
+|  |- Perform fact-checking
 |- Grok
 |  |- Send selection
 |  |- Translate to Russian
@@ -82,6 +84,8 @@ Available service commands:
 - **ChatGPT → Perform fact-checking** - fact-checks claims in the selected text with reliability classification and a structured answer per claim
 - **Qwen AI → Send selection** - sends the selected text as is
 - **Qwen AI → Translate to Russian** - translates the selected text to Russian before sending
+- **Qwen AI → Make summary** - creates a concise summary of the selected text
+- **Qwen AI → Perform fact-checking** - fact-checks claims in the selected text with reliability classification
 - **Grok → Send selection** - sends the selected text as is
 - **Grok → Translate to Russian** - translates the selected text to Russian before sending
 - **Grok → Make summary** - creates a concise summary of the selected text
@@ -226,6 +230,7 @@ Import goes through normalization: if the file contains outdated or redundant da
 - **Settings import/export** as JSON with a schema version
 - **Error diagnostics** via `chrome.storage.local` without storing prompts
 - **Options page theme** via `chrome.storage.local` and the `data-options-theme` attribute
+- **Settings split across two storage areas**: YouTube templates and custom commands live in `chrome.storage.local` (they exceed the 8 KB per-item `sync` quota and are not synced across devices); everything else stays in `chrome.storage.sync`
 
 ### Required Permissions
 
@@ -244,6 +249,7 @@ send-to-ai-extension/
 |- background.bundle.js (generated service worker, do not edit)
 |- services.js
 |- settings.js
+|- settings-storage.js
 |- menus.js
 |- youtube.js
 |- youtube-templates.js
@@ -267,7 +273,9 @@ send-to-ai-extension/
 |- options-ui-core.js
 |- package.json
 |- scripts/
+|  |- build-background.js
 |  |- build-zip.js
+|  |- verify-cleanup.js
 |- test/
 |  |- context-prompts.test.js
 |  |- custom-commands.test.js
@@ -278,6 +286,7 @@ send-to-ai-extension/
 |  |- options-ui-core.test.js
 |  |- profiles.test.js
 |  |- services-profiles.test.js
+|  |- settings-storage.test.js
 |  |- settings.test.js
 |  |- youtube-templates.test.js
 |  |- youtube.test.js
