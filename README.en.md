@@ -69,9 +69,10 @@ Send to AI
 |- Pages and links
 |- Pages and links in Qwen
 |- Pages and links in Grok
+|- Pages and links in DeepSeek
 ```
 
-When you right-click a page or a link, the service submenus are replaced with the **Pages and links**, **Pages and links in Qwen**, and **Pages and links in Grok** blocks. When you right-click a YouTube link, enabled YouTube templates appear as well.
+When you right-click a page or a link, the service submenus are replaced with the **Pages and links**, **Pages and links in Qwen**, **Pages and links in Grok**, and **Pages and links in DeepSeek** blocks. When you right-click a YouTube link, enabled YouTube templates appear as well.
 
 Available service commands:
 
@@ -88,6 +89,7 @@ Available service commands:
 - **Pages and links** - summary, fact-checking, translation, and key points commands for a page or link in ChatGPT
 - **Pages and links in Qwen** - the same commands powered by Qwen
 - **Pages and links in Grok** - the same commands powered by Grok
+- **Pages and links in DeepSeek** - the same commands powered by DeepSeek
 - **My commands** - custom prompt commands from settings
 
 ## Installation
@@ -122,13 +124,13 @@ Templates are editable on the options page: prompt text, title, target service, 
 ### Any Link
 
 1. Right-click any link on a webpage
-2. Pick a command from **Pages and links**, **Pages and links in Qwen**, or **Pages and links in Grok**
+2. Pick a command from **Pages and links**, **Pages and links in Qwen**, **Pages and links in Grok**, or **Pages and links in DeepSeek**
 3. The extension opens the chosen service and inserts a prompt to process the link
 
 ### Current Page
 
 1. Right-click any empty area on the current page
-2. Pick a command from **Pages and links**, **Pages and links in Qwen**, or **Pages and links in Grok**
+2. Pick a command from **Pages and links**, **Pages and links in Qwen**, **Pages and links in Grok**, or **Pages and links in DeepSeek**
 3. The extension opens the chosen service and inserts a prompt to process the current page
 
 ### Custom Commands
@@ -150,7 +152,7 @@ For commands with the **Page text** context, the extension extracts the visible 
 3. Note that **ChatGPT**, **Qwen AI**, and **Grok** are pinned first
 4. Reorder the remaining services with drag and drop
 5. In the **Service commands** section toggle the nested commands of ChatGPT, Qwen AI, and Grok
-6. In the **Qwen for pages and links** and **Grok for pages and links** sections configure the page/link commands
+6. In the **Qwen for pages and links**, **Grok for pages and links**, and **DeepSeek for pages and links** sections configure the page/link commands
 7. Click **Save**
 
 ### YouTube Templates

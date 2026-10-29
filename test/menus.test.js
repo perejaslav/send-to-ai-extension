@@ -288,6 +288,42 @@ test("buildMenuDescriptors respects individual Qwen context action toggles", () 
   assert.ok(!ids.includes("linkSummaryInQwen"));
 });
 
+test("buildMenuDescriptors creates DeepSeek context actions submenu", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToDeepSeek"],
+    enabledServices: { sendToDeepSeek: true },
+    defaultServiceId: "sendToDeepSeek",
+    showSpecialActions: false,
+    showContextActionsDeepSeek: true
+  });
+
+  const ids = descriptors.map((item) => item.id);
+  assert.ok(ids.includes("pageAndLinkActionsDeepSeek"));
+  for (const prefix of ["pageSummary", "pageFactCheck", "pageTranslate", "pageKeyPoints", "linkSummary", "linkFactCheck", "linkTranslate", "linkKeyPoints"]) {
+    const action = descriptors.find((item) => item.id === `${prefix}InDeepSeek`);
+    assert.ok(action, `${prefix}InDeepSeek should be present`);
+    assert.equal(action.parentId, "pageAndLinkActionsDeepSeek");
+  }
+
+  const deepSeekMenu = descriptors.find((item) => item.id === "pageAndLinkActionsDeepSeek");
+  assert.equal(deepSeekMenu.title, "Страницы и ссылки в DeepSeek");
+  assert.deepEqual(deepSeekMenu.contexts, ["page", "link"]);
+});
+
+test("buildMenuDescriptors omits DeepSeek context actions when disabled", () => {
+  const descriptors = buildMenuDescriptors({
+    serviceOrder: ["sendToDeepSeek"],
+    enabledServices: { sendToDeepSeek: true },
+    defaultServiceId: "sendToDeepSeek",
+    showSpecialActions: false,
+    showContextActionsDeepSeek: false
+  });
+
+  const ids = descriptors.map((item) => item.id);
+  assert.ok(!ids.includes("pageAndLinkActionsDeepSeek"));
+  assert.ok(!ids.includes("pageSummaryInDeepSeek"));
+});
+
 test("buildMenuDescriptors creates custom commands submenu", () => {
   const descriptors = buildMenuDescriptors({
     serviceOrder: ["sendToChatGPT", "sendToQwen"],

@@ -1,6 +1,6 @@
 import { normalizeCustomCommands } from "./custom-commands.js";
 import { ALL_PROFILES_ID, normalizeActiveProfileIds } from "./profiles.js";
-import { ALL_CONTEXT_ACTION_QWEN_IDS, ALL_CONTEXT_ACTION_GROK_IDS, ALL_SERVICE_IDS, SPECIAL_ACTIONS } from "./services.js";
+import { ALL_CONTEXT_ACTION_QWEN_IDS, ALL_CONTEXT_ACTION_GROK_IDS, ALL_CONTEXT_ACTION_DEEPSEEK_IDS, ALL_SERVICE_IDS, SPECIAL_ACTIONS } from "./services.js";
 import { normalizeYouTubeTemplates } from "./youtube-templates.js";
 
 export const SETTINGS_STORAGE_KEYS = [
@@ -13,6 +13,8 @@ export const SETTINGS_STORAGE_KEYS = [
   "enabledContextActionsQwen",
   "showContextActionsGrok",
   "enabledContextActionsGrok",
+  "showContextActionsDeepSeek",
+  "enabledContextActionsDeepSeek",
   "customCommands",
   "activeProfileIds"
 ];
@@ -31,6 +33,10 @@ function buildDefaultContextActionsGrok() {
   return Object.fromEntries(ALL_CONTEXT_ACTION_GROK_IDS.map((actionId) => [actionId, true]));
 }
 
+function buildDefaultContextActionsDeepSeek() {
+  return Object.fromEntries(ALL_CONTEXT_ACTION_DEEPSEEK_IDS.map((actionId) => [actionId, true]));
+}
+
 export function buildDefaultSettings(allServiceIds = ALL_SERVICE_IDS) {
   const enabledServices = Object.fromEntries(allServiceIds.map((serviceId) => [serviceId, true]));
 
@@ -44,6 +50,8 @@ export function buildDefaultSettings(allServiceIds = ALL_SERVICE_IDS) {
     enabledContextActionsQwen: buildDefaultContextActionsQwen(),
     showContextActionsGrok: true,
     enabledContextActionsGrok: buildDefaultContextActionsGrok(),
+    showContextActionsDeepSeek: true,
+    enabledContextActionsDeepSeek: buildDefaultContextActionsDeepSeek(),
     customCommands: [],
     activeProfileIds: [ALL_PROFILES_ID],
     youtubeTemplates: normalizeYouTubeTemplates()
@@ -125,6 +133,17 @@ export function normalizeSettings(rawSettings, allServiceIds = ALL_SERVICE_IDS) 
       : true;
   }
 
+  const enabledContextDeepSeekFromStorage = source.enabledContextActionsDeepSeek && typeof source.enabledContextActionsDeepSeek === "object"
+    ? source.enabledContextActionsDeepSeek
+    : {};
+
+  const normalizedContextActionsDeepSeek = {};
+  for (const actionId of ALL_CONTEXT_ACTION_DEEPSEEK_IDS) {
+    normalizedContextActionsDeepSeek[actionId] = typeof enabledContextDeepSeekFromStorage[actionId] === "boolean"
+      ? enabledContextDeepSeekFromStorage[actionId]
+      : true;
+  }
+
   return {
     serviceOrder: normalizedOrder,
     enabledServices: normalizedEnabled,
@@ -135,6 +154,8 @@ export function normalizeSettings(rawSettings, allServiceIds = ALL_SERVICE_IDS) 
     enabledContextActionsQwen: normalizedContextActionsQwen,
     showContextActionsGrok: source.showContextActionsGrok !== false,
     enabledContextActionsGrok: normalizedContextActionsGrok,
+    showContextActionsDeepSeek: source.showContextActionsDeepSeek !== false,
+    enabledContextActionsDeepSeek: normalizedContextActionsDeepSeek,
     customCommands: normalizeCustomCommands(source.customCommands, allServiceIds),
     activeProfileIds: normalizeActiveProfileIds(source.activeProfileIds),
     youtubeTemplates: normalizeYouTubeTemplates(source.youtubeTemplates)

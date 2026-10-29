@@ -15,6 +15,9 @@ import {
   CONTEXT_ACTIONS_GROK,
   CONTEXT_ACTIONS_GROK_MENU_ID,
   CONTEXT_ACTIONS_GROK_MENU_TITLE,
+  CONTEXT_ACTIONS_DEEPSEEK,
+  CONTEXT_ACTIONS_DEEPSEEK_MENU_ID,
+  CONTEXT_ACTIONS_DEEPSEEK_MENU_TITLE,
   SERVICE_CONFIGS,
   SERVICES_BY_ID,
   SPECIAL_ACTIONS,
@@ -218,6 +221,30 @@ export function buildMenuDescriptors(settings) {
         descriptors.push({
           id: action.id,
           parentId: CONTEXT_ACTIONS_GROK_MENU_ID,
+          title: action.title,
+          contexts: [action.contextType]
+        });
+      }
+    }
+  }
+
+  if (settings.showContextActionsDeepSeek) {
+    const enabledContextActionsDeepSeek = settings.enabledContextActionsDeepSeek || {};
+    const visibleContextDeepSeek = CONTEXT_ACTIONS_DEEPSEEK.filter((action) =>
+      isServiceEnabled(settings, action.serviceId) && enabledContextActionsDeepSeek[action.id] !== false
+    );
+
+    if (visibleContextDeepSeek.length > 0) {
+      descriptors.push({
+        id: CONTEXT_ACTIONS_DEEPSEEK_MENU_ID,
+        title: CONTEXT_ACTIONS_DEEPSEEK_MENU_TITLE,
+        contexts: ["page", "link"]
+      });
+
+      for (const action of visibleContextDeepSeek) {
+        descriptors.push({
+          id: action.id,
+          parentId: CONTEXT_ACTIONS_DEEPSEEK_MENU_ID,
           title: action.title,
           contexts: [action.contextType]
         });

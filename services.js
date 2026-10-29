@@ -10,6 +10,7 @@ export const YOUTUBE_MENU_IDS = {
 export const CONTEXT_ACTIONS_MENU_ID = "pageAndLinkActions";
 export const CONTEXT_ACTIONS_QWEN_MENU_ID = "pageAndLinkActionsQwen";
 export const CONTEXT_ACTIONS_GROK_MENU_ID = "pageAndLinkActionsGrok";
+export const CONTEXT_ACTIONS_DEEPSEEK_MENU_ID = "pageAndLinkActionsDeepSeek";
 export const QUICK_DEFAULT_MENU_ID = "sendToAIDefault";
 
 export const ROOT_MENU_TITLE = "Отправить в AI";
@@ -23,6 +24,7 @@ export const YOUTUBE_MENU_TITLES = {
 export const CONTEXT_ACTIONS_MENU_TITLE = "Страницы и ссылки";
 export const CONTEXT_ACTIONS_QWEN_MENU_TITLE = "Страницы и ссылки в Qwen";
 export const CONTEXT_ACTIONS_GROK_MENU_TITLE = "Страницы и ссылки в Grok";
+export const CONTEXT_ACTIONS_DEEPSEEK_MENU_TITLE = "Страницы и ссылки в DeepSeek";
 
 export const SERVICE_CONFIGS = [
   {
@@ -572,9 +574,70 @@ export const CONTEXT_ACTIONS_GROK = [
   }
 ];
 
+export const CONTEXT_ACTIONS_DEEPSEEK = [
+  {
+    id: "pageSummaryInDeepSeek",
+    title: "Саммари страницы в DeepSeek",
+    contextType: "page",
+    actionType: "summary",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "pageFactCheckInDeepSeek",
+    title: "Фактчекинг страницы в DeepSeek",
+    contextType: "page",
+    actionType: "factcheck",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "pageTranslateInDeepSeek",
+    title: "Перевести страницу в DeepSeek",
+    contextType: "page",
+    actionType: "translate",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "pageKeyPointsInDeepSeek",
+    title: "Тезисы страницы в DeepSeek",
+    contextType: "page",
+    actionType: "key_points",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "linkSummaryInDeepSeek",
+    title: "Саммари ссылки в DeepSeek",
+    contextType: "link",
+    actionType: "summary",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "linkFactCheckInDeepSeek",
+    title: "Фактчекинг ссылки в DeepSeek",
+    contextType: "link",
+    actionType: "factcheck",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "linkTranslateInDeepSeek",
+    title: "Перевести ссылку в DeepSeek",
+    contextType: "link",
+    actionType: "translate",
+    serviceId: "sendToDeepSeek"
+  },
+  {
+    id: "linkKeyPointsInDeepSeek",
+    title: "Тезисы ссылки в DeepSeek",
+    contextType: "link",
+    actionType: "key_points",
+    serviceId: "sendToDeepSeek"
+  }
+];
+
 export const CONTEXT_ACTIONS_BY_ID = Object.fromEntries(CONTEXT_ACTIONS.map((action) => [action.id, action]));
 export const CONTEXT_ACTIONS_QWEN_BY_ID = Object.fromEntries(CONTEXT_ACTIONS_QWEN.map((action) => [action.id, action]));
 export const CONTEXT_ACTIONS_GROK_BY_ID = Object.fromEntries(CONTEXT_ACTIONS_GROK.map((action) => [action.id, action]));
+export const CONTEXT_ACTIONS_DEEPSEEK_BY_ID = Object.fromEntries(CONTEXT_ACTIONS_DEEPSEEK.map((action) => [action.id, action]));
 export const ALL_SERVICE_IDS = SERVICE_CONFIGS.map((service) => service.id);
 export const ALL_CONTEXT_ACTION_QWEN_IDS = CONTEXT_ACTIONS_QWEN.map((action) => action.id);
 export const ALL_CONTEXT_ACTION_GROK_IDS = CONTEXT_ACTIONS_GROK.map((action) => action.id);
+export const ALL_CONTEXT_ACTION_DEEPSEEK_IDS = CONTEXT_ACTIONS_DEEPSEEK.map((action) => action.id);
